@@ -4,16 +4,8 @@ import App from './App'
 import { polyfill } from 'mobile-drag-drop';
 import 'mobile-drag-drop/default.css';
 
-// Initialize touch drag and drop polyfill with better settings
-polyfill({
-    dragImageTranslateOverride: (event, hoverElement, translatedEvent) => {
-        // This helps the drag image stay exactly under the finger
-        if (translatedEvent) {
-            translatedEvent.clientX = event.clientX;
-            translatedEvent.clientY = event.clientY;
-        }
-    }
-});
+// Initialize touch drag and drop polyfill
+polyfill({});
 
 // Force prevent default on touchmove to allow dragging over the canvas
 document.addEventListener('touchmove', (e) => {

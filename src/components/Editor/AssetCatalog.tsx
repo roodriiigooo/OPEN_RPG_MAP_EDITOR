@@ -164,21 +164,17 @@ export const AssetCatalog: React.FC<AssetCatalogProps> = ({ mode = 'library' }) 
     
     e.dataTransfer.effectAllowed = 'copyMove';
 
-    // VISUAL FEEDBACK: Force a high-quality drag image
+    // VISUAL FEEDBACK: Optimized for speed
     const target = e.currentTarget as HTMLElement;
-    
-    // Find the primary visual (image or icon container)
     const visual = target.querySelector('img') || target.querySelector('.text-muted') || target;
     
     if (e.dataTransfer.setDragImage) {
-        // Center the drag image on the cursor (assuming 64x64 or 48x48 standard icons)
-        // This ensures the object follows the cursor naturally
+        // Use fixed offsets (32, 32) instead of getBoundingClientRect for instant start
+        // This avoids layout recalculation on touch start
         try {
-             const rect = visual.getBoundingClientRect();
-             e.dataTransfer.setDragImage(visual as Element, rect.width / 2, rect.height / 2);
+             e.dataTransfer.setDragImage(visual as Element, 32, 32);
         } catch(err) {
-             // Fallback for elements that can't be used directly as drag image
-             e.dataTransfer.setDragImage(target, target.offsetWidth / 2, target.offsetHeight / 2);
+             e.dataTransfer.setDragImage(target, 32, 32);
         }
     }
   };
