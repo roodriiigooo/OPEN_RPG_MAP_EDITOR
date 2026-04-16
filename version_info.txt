@@ -31,12 +31,12 @@ VSVersionInfo(
         u'040904B0',
         [StringStruct(u'CompanyName', u'Open Source Community'),
         StringStruct(u'FileDescription', u'ORPGME - Open Source RPG Map Editor'),
-        StringStruct(u'FileVersion', u'0.0.1'),
+        StringStruct(u'FileVersion', u'0.0.2'),
         StringStruct(u'InternalName', u'ORPGME.exe'),
         StringStruct(u'LegalCopyright', u'Copyright (c) 2026'),
         StringStruct(u'OriginalFilename', u'ORPGME.exe'),
         StringStruct(u'ProductName', u'ORPGME - Open Source RPG Map Editor'),
-        StringStruct(u'ProductVersion', u'0.0.1')])
+        StringStruct(u'ProductVersion', u'0.0.2')])
       ]),
     VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
   ]

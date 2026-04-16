@@ -72,10 +72,7 @@ const AssetRenderer: React.FC<{ asset: Asset; isSelected: boolean; onSelect: (id
 
   useEffect(() => {
       if (asset.type === 'text' && textRef.current) {
-          // Force measurement and redraw after font/style changes
           const node = textRef.current;
-          
-          // Wait for browser font loading if necessary, then redraw
           if (document.fonts) {
               document.fonts.ready.then(() => {
                   setTextSize({ w: node.width(), h: node.height() });
@@ -91,7 +88,7 @@ const AssetRenderer: React.FC<{ asset: Asset; isSelected: boolean; onSelect: (id
   if (!asset.visible) return null;
   
   const shadowProps = props.shadow?.enabled 
-    ? { shadowColor: 'black', shadowBlur: shadow.blur, shadowOffset: { x: shadow.x, y: shadow.y }, shadowOpacity: shadow.opacity } 
+    ? { shadowColor: props.shadow.color || 'black', shadowBlur: shadow.blur, shadowOffset: { x: shadow.x, y: shadow.y }, shadowOpacity: shadow.opacity } 
     : {};
 
   const commonProps = { 
@@ -148,6 +145,7 @@ const AssetRenderer: React.FC<{ asset: Asset; isSelected: boolean; onSelect: (id
                     onMouseEnter={commonProps.onMouseEnter}
                     onMouseLeave={commonProps.onMouseLeave}
                     ref={shapeRef}
+                    {...shadowProps}
                 >
                     <KonvaText 
                         ref={textRef}
@@ -510,7 +508,24 @@ const InternalCanvas: React.FC = () => {
   const handleTouchMove = (e: any) => {
       const touches = e.evt.touches;
       if (touches.length === 1) {
-          handleMouseMove(e);
+          // If Hand tool is active, single finger moves the map
+          if (activeTool === 'hand') {
+              e.evt.preventDefault();
+              const clientX = touches[0].clientX;
+              const clientY = touches[0].clientY;
+              
+              if (lastCenter.current) {
+                  const dx = clientX - lastCenter.current.x;
+                  const dy = clientY - lastCenter.current.y;
+                  setViewportPosition({ 
+                      x: viewportPosition.x + dx, 
+                      y: viewportPosition.y + dy 
+                  });
+              }
+              lastCenter.current = { x: clientX, y: clientY };
+          } else {
+              handleMouseMove(e);
+          }
       } else if (touches.length === 2 && stageRef.current) {
           e.evt.preventDefault();
           const p1 = { x: touches[0].clientX, y: touches[0].clientY };
@@ -545,7 +560,25 @@ const InternalCanvas: React.FC = () => {
       }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: any) => {
+      // 1. If we have an active stamp (from touchstart in catalog), place it
+      const activeStamp = useEditorStore.getState().activeStamp;
+      if (activeStamp && lastCenter.current) {
+          const stage = stageRef.current;
+          if (stage) {
+              const clientX = lastCenter.current.x;
+              const clientY = lastCenter.current.y;
+              
+              handleDrop({ 
+                  preventDefault: () => {}, 
+                  stopPropagation: () => {},
+                  clientX, 
+                  clientY,
+                  dataTransfer: { getData: () => null }
+              } as any);
+          }
+      }
+
       lastDist.current = 0;
       lastCenter.current = null;
       handleMouseUp({ evt: { button: 0 } });
@@ -580,7 +613,7 @@ const InternalCanvas: React.FC = () => {
         
         const shouldSnap = !isLight && (originalAsset.snapToGrid !== undefined ? originalAsset.snapToGrid : grid.snapToGrid);
         
-        if (shouldSnap) { if (grid.type === 'square') { x = Math.round(x / grid.size) * grid.size; y = Math.round(y / grid.size) * grid.size; } else { const ax = pixelToAxial(x, y, grid.size, grid.type === 'hex-pointy' ? 'pointy' : 'flat'); const sn = axialToPixel(ax.q, ax.r, grid.size, grid.type === 'hex-pointy' ? 'pointy' : 'flat'); x = sn.x; y = sn.y; } }
+        if (shouldSnap) { if (grid.type === 'square') { x = Math.round(x / grid.size) * grid.size; y = Math.round(y / grid.size) * grid.size; } else { const axial = pixelToAxial(x, y, grid.size, grid.type === 'hex-pointy' ? 'pointy' : 'flat'); const sn = axialToPixel(axial.q, axial.r, grid.size, grid.type === 'hex-pointy' ? 'pointy' : 'flat'); x = sn.x; y = sn.y; } }
         x = Math.max(0, Math.min(x, metadata.resolution.width - 1)); y = Math.max(0, Math.min(y, metadata.resolution.height - 1)); 
         node.x(x); node.y(y);
     }
@@ -615,12 +648,7 @@ const InternalCanvas: React.FC = () => {
         const currentFontSize = existingAsset.properties?.fontSize || 24;
         const absScaleX = Math.abs(scaleX);
         const absScaleY = Math.abs(scaleY);
-
-        // We ALWAYS recalculate a "nominal" fontSize based on height (scaleY)
-        // so the Properties panel reflects the new visual size.
         const newFontSize = Math.round(currentFontSize * absScaleY);
-
-        // If it's a nearly uniform scale, we "bake" it fully and reset scale to 1
         const isUniform = Math.abs(absScaleX - absScaleY) < 0.05;
 
         if (isUniform) {
@@ -633,15 +661,10 @@ const InternalCanvas: React.FC = () => {
                 flipX: scaleX < 0,
                 flipY: scaleY < 0
             };
-            // Reset node scale immediately for visual consistency
             node.scaleX(scaleX < 0 ? -1 : 1);
             node.scaleY(scaleY < 0 ? -1 : 1);
         } else {
-            // Non-uniform scale: keep the non-uniformity but update nominal fontSize
-            // and normalize scales so scaleY is 1 (baked into fontSize)
-            // This is the cleanest way to persist "squashed/stretched" text
             const remainingScaleX = absScaleX / absScaleY;
-
             updates.scaleX = remainingScaleX;
             updates.scaleY = 1;
             updates.properties = {
@@ -650,13 +673,11 @@ const InternalCanvas: React.FC = () => {
                 flipX: scaleX < 0,
                 flipY: scaleY < 0
             };
-
             node.scaleX(scaleX < 0 ? -remainingScaleX : remainingScaleX);
             node.scaleY(scaleY < 0 ? -1 : 1);
         }
     }
  else {
-        // Standard asset transform
         updates.scaleX = Math.abs(scaleX);
         updates.scaleY = Math.abs(scaleY);
         updates.properties = {
@@ -669,23 +690,150 @@ const InternalCanvas: React.FC = () => {
     useMapStore.getState().updateAsset(id, updates);
   }, []);
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault(); const stage = stageRef.current; if (!stage || !activeLayerId) return;
-    stage.setPointersPositions(e); const pointer = stage.getRelativePointerPosition(); if (!pointer) return;
-    pointer.x = Math.max(0, Math.min(pointer.x, metadata.resolution.width - 1));
-    pointer.y = Math.max(0, Math.min(pointer.y, metadata.resolution.height - 1));
-    const targetLayer = layers.find(l => l.id === activeLayerId);
-    if (targetLayer?.type === 'background' || targetLayer?.type === 'terrain' || targetLayer?.type === 'wall') { useNotificationStore.getState().showToast("Restricted Layer", "Select an Object layer first.", "warn"); return; }
-    let x = pointer.x, y = pointer.y; const grid = useMapStore.getState().grid;
-    
-    const assetType = e.dataTransfer.getData('assetType'); const customAssetId = e.dataTransfer.getData('customAssetId');
-    const isLight = assetType === 'light';
+  const handleDrop = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-    if (grid.snapToGrid && !isLight) { if (grid.type === 'square') { x = Math.round(x / grid.size) * grid.size; y = Math.round(y / grid.size) * grid.size; } else { const ax = pixelToAxial(x, y, grid.size, grid.type === 'hex-pointy' ? 'pointy' : 'flat'); const sn = axialToPixel(ax.q, ax.r, grid.size, grid.type === 'hex-pointy' ? 'pointy' : 'flat'); x = sn.x; y = sn.y; } }
-    
-    if (isLight) { useMapStore.getState().addPointLight({ id: crypto.randomUUID(), layerId: activeLayerId, x, y, color: '#ffffff', radius: 300, intensity: 1, visible: true, locked: false }); return; }
-    if (assetType) { const name = customAssetId ? (useAssetStore.getState().customAssets.find(a => a.id === customAssetId)?.name || assetType) : assetType; useMapStore.getState().addAsset({ id: crypto.randomUUID(), layerId: activeLayerId, type: assetType as any, name, customAssetId: customAssetId || undefined, x, y, rotation: 0, scale: 1, visible: true, locked: false, snapToGrid: true, properties: { opacity: 1, flipX: false, flipY: false, shadow: { enabled: false, opacity: 0.6, blur: 15, x: 30, y: 0 } } }); }
-  };
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    // 1. Precise Coordinate Detection (Works for Mouse and Polyfilled Touch)
+    const clientX = e.clientX || (e as any).changedTouches?.[0]?.clientX;
+    const clientY = e.clientY || (e as any).changedTouches?.[0]?.clientY;
+
+    if (clientX === undefined || clientY === undefined) return;
+
+    const containerRect = stage.container().getBoundingClientRect();
+    const xRaw = (clientX - containerRect.left - stage.x()) / stage.scaleX();
+    const yRaw = (clientY - containerRect.top - stage.y()) / stage.scaleY();
+
+    let x = Math.max(0, Math.min(xRaw, metadata.resolution.width - 1));
+    let y = Math.max(0, Math.min(yRaw, metadata.resolution.height - 1));
+
+    // 2. Data Recovery with Fallback
+    let assetType = e.dataTransfer?.getData('assetType');
+    let customAssetId = e.dataTransfer?.getData('customAssetId');
+
+    if (!assetType) {
+        const activeStamp = useEditorStore.getState().activeStamp;
+        if (activeStamp) {
+            assetType = activeStamp.type;
+            customAssetId = activeStamp.customAssetId || '';
+        }
+    }
+
+    if (!assetType) return;
+
+    // 3. Layer Validation
+    let targetLayerId = activeLayerId;
+    const currentLayer = layers.find(l => l.id === targetLayerId);
+    if (!currentLayer || (currentLayer.type !== 'object' && currentLayer.id !== 'stamp-layer')) {
+        const fallbackLayer = layers.find(l => l.type === 'object' || l.id === 'stamp-layer');
+        if (fallbackLayer) {
+            targetLayerId = fallbackLayer.id;
+            useMapStore.getState().setActiveLayer(fallbackLayer.id);
+        } else {
+            useNotificationStore.getState().showToast("No Object Layer", "Please select or create an Object layer.", "warn");
+            return;
+        }
+    }
+
+    // 4. Grid Snapping
+    const grid = useMapStore.getState().grid;
+    const isLight = assetType === 'light';
+    if (grid.snapToGrid && !isLight) {
+        if (grid.type === 'square') {
+            x = Math.round(x / grid.size) * grid.size;
+            y = Math.round(y / grid.size) * grid.size;
+        } else {
+            const axial = pixelToAxial(x, y, grid.size, grid.type === 'hex-pointy' ? 'pointy' : 'flat');
+            const sn = axialToPixel(axial.q, axial.r, grid.size, grid.type === 'hex-pointy' ? 'pointy' : 'flat');
+            x = sn.x; y = sn.y;
+        }
+    }
+
+    // 5. Add to Store
+    if (isLight) {
+        useMapStore.getState().addPointLight({
+            id: crypto.randomUUID(), layerId: targetLayerId!, x, y,
+            color: '#ffffff', radius: 300, intensity: 1, visible: true, locked: false
+        });
+    } else {
+        const name = customAssetId ? (useAssetStore.getState().customAssets.find(a => a.id === customAssetId)?.name || assetType) : assetType;
+        useMapStore.getState().addAsset({
+            id: crypto.randomUUID(), layerId: targetLayerId!, type: assetType as any, name,
+            customAssetId: customAssetId || undefined, x, y, rotation: 0, scale: 1,
+            visible: true, locked: false, snapToGrid: true,
+            properties: { 
+                opacity: 1, 
+                flipX: false, 
+                flipY: false, 
+                shadow: { 
+                    enabled: true, 
+                    opacity: 0.6, 
+                    blur: 15, 
+                    x: 30, 
+                    y: 0 
+                } 
+            }
+        });
+    }
+
+    // Cleanup
+    setTimeout(() => useEditorStore.getState().setActiveStamp(null), 50);
+  }, [metadata.resolution, layers, activeLayerId]);
+
+  // Use native listeners to bypass React synthetic event issues with touch polyfills
+  useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const onDragOver = (e: DragEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      };
+
+      // Global touch handler to catch drops that started outside the canvas
+      const onGlobalTouchEnd = (e: TouchEvent) => {
+          const activeStamp = useEditorStore.getState().activeStamp;
+          if (!activeStamp) return;
+
+          const touch = e.changedTouches[0];
+          const clientX = touch.clientX;
+          const clientY = touch.clientY;
+
+          const rect = container.getBoundingClientRect();
+          // Check if the touch ended inside the canvas bounds
+          if (
+              clientX >= rect.left && 
+              clientX <= rect.right && 
+              clientY >= rect.top && 
+              clientY <= rect.bottom
+          ) {
+              handleDrop({
+                  preventDefault: () => {},
+                  stopPropagation: () => {},
+                  clientX,
+                  clientY,
+                  dataTransfer: { getData: () => null }
+              } as any);
+          } else {
+              // If dropped outside, still clear the stamp to avoid accidental placements
+              useEditorStore.getState().setActiveStamp(null);
+          }
+      };
+
+      container.addEventListener('dragover', onDragOver);
+      container.addEventListener('drop', handleDrop);
+      window.addEventListener('touchend', onGlobalTouchEnd, { passive: false });
+
+      return () => {
+          container.removeEventListener('dragover', onDragOver);
+          container.removeEventListener('drop', handleDrop);
+          window.removeEventListener('touchend', onGlobalTouchEnd);
+      };
+  }, [handleDrop]);
 
   const renderLayer = (layer: MapLayer) => {
     const layerAssets = assets.filter(a => a.layerId === layer.id);
@@ -700,29 +848,16 @@ const InternalCanvas: React.FC = () => {
           {layer.type === 'wall' && <TilingRenderer layerId={layer.id} type={TileType.WALL} />}
           {sortedObjects.map(obj => {
               const isSelected = selectedAssetIds.includes(obj.id);
-              
-              // NEW Logic: Calculate specific interactivity per tool
               let canInteractWithThis = false;
-              if (isSelectOrStamp) {
-                  canInteractWithThis = true;
-              } else if (activeTool === 'text') {
-                  canInteractWithThis = ('type' in obj && obj.type === 'text');
-              }
+              if (isSelectOrStamp) canInteractWithThis = true;
+              else if (activeTool === 'text') canInteractWithThis = ('type' in obj && obj.type === 'text');
 
               if ('radius' in obj) {
                   const l = obj as IPointLight;
                   return (
                     <Group key={l.id} visible={l.visible}>
                         <PointLight {...l} />
-                        <LightInteractionPoint 
-                            light={l} 
-                            isSelected={isSelected} 
-                            scale={viewportZoom} 
-                            onSelect={handleSelect} 
-                            onDragMove={handleAssetDragMove} 
-                            onDragEnd={handleAssetDragEnd} 
-                            canInteract={canInteractWithThis} 
-                        />
+                        <LightInteractionPoint light={l} isSelected={isSelected} scale={viewportZoom} onSelect={handleSelect} onDragMove={handleAssetDragMove} onDragEnd={handleAssetDragEnd} canInteract={canInteractWithThis} />
                     </Group>
                   );
               } else {
@@ -735,7 +870,7 @@ const InternalCanvas: React.FC = () => {
   };
 
   return (
-    <div ref={containerRef} className="w-full h-full flex flex-col" style={{ backgroundColor: editorBgColor }} onDrop={handleDrop} onDragOver={e => e.preventDefault()} onContextMenu={e => e.preventDefault()}>
+    <div ref={containerRef} className="w-full h-full flex flex-col overflow-hidden" style={{ backgroundColor: editorBgColor, touchAction: 'none' }} onContextMenu={e => e.preventDefault()}>
       <Stage 
         ref={stageRef} width={dimensions.width} height={dimensions.height} scaleX={viewportZoom} scaleY={viewportZoom} x={viewportPosition.x} y={viewportPosition.y} 
         draggable={false} onWheel={handleWheel} 
@@ -744,6 +879,7 @@ const InternalCanvas: React.FC = () => {
         onContextMenu={e => e.evt.preventDefault()}
         onMouseEnter={() => { if (activeTool === 'hand' && stageRef.current) stageRef.current.container().style.cursor = 'grab'; }}
         onMouseLeave={() => { if (stageRef.current) stageRef.current.container().style.cursor = 'default'; }}
+        className="touch-none"
       >
         {ghostMap && <Layer id="ghost-layer"><GhostFloorRenderer map={ghostMap} opacity={ghostFloorOpacity} /></Layer>}
         {layers.map(renderLayer)}
@@ -757,25 +893,10 @@ const InternalCanvas: React.FC = () => {
             </Group>
           )}
           {selectionRect && (
-              <Rect 
-                x={Math.min(selectionRect.x1, selectionRect.x2)} 
-                y={Math.min(selectionRect.y1, selectionRect.y2)} 
-                width={Math.abs(selectionRect.x2 - selectionRect.x1)} 
-                height={Math.abs(selectionRect.y2 - selectionRect.y1)} 
-                stroke="#3b82f6" strokeWidth={1/viewportZoom} dash={[4, 2]} fill="rgba(59, 130, 246, 0.1)" 
-              />
+              <Rect x={Math.min(selectionRect.x1, selectionRect.x2)} y={Math.min(selectionRect.y1, selectionRect.y2)} width={Math.abs(selectionRect.x2 - selectionRect.x1)} height={Math.abs(selectionRect.y2 - selectionRect.y1)} stroke="#3b82f6" strokeWidth={1/viewportZoom} dash={[4, 2]} fill="rgba(59, 130, 246, 0.1)" />
           )}
           {activeTool === 'room' && isDrawingRoom && roomStartPoint && roomCurrentPoint && (
-              <Rect 
-                x={Math.min(roomStartPoint.x, roomCurrentPoint.x)} 
-                y={Math.min(roomStartPoint.y, roomCurrentPoint.y)} 
-                width={Math.abs(roomCurrentPoint.x - roomStartPoint.x)} 
-                height={Math.abs(roomCurrentPoint.y - roomStartPoint.y)} 
-                stroke={useRoomStore.getState().mode === 'erase' ? "#ef4444" : "#f97316"} 
-                dash={[5, 5]} 
-                fill={useRoomStore.getState().mode === 'erase' ? "rgba(239, 68, 68, 0.1)" : "rgba(249, 115, 22, 0.1)"} 
-                perfectDrawEnabled={false} 
-              />
+              <Rect x={Math.min(roomStartPoint.x, roomCurrentPoint.x)} y={Math.min(roomStartPoint.y, roomCurrentPoint.y)} width={Math.abs(roomCurrentPoint.x - roomStartPoint.x)} height={Math.abs(roomCurrentPoint.y - roomStartPoint.y)} stroke={useRoomStore.getState().mode === 'erase' ? "#ef4444" : "#f97316"} dash={[5, 5]} fill={useRoomStore.getState().mode === 'erase' ? "rgba(239, 68, 68, 0.1)" : "rgba(249, 115, 22, 0.1)"} perfectDrawEnabled={false} />
           )}
         </Layer>
         <Layer listening={false}>{lighting.global.enabled && <GlobalOverlay {...lighting.global} />}<AtmosphereOverlay /></Layer>

@@ -146,15 +146,48 @@ export const AssetCatalog: React.FC<AssetCatalogProps> = ({ mode = 'library' }) 
   }, [customAssets, tilesets, addTileset]);
 
   const onDragStart = (e: React.DragEvent, type: string, assetId?: string) => {
-    if (mode !== 'stamp') {
-        e.preventDefault();
-        return;
-    }
-    e.dataTransfer.setData('assetType', type);
+    const finalType = type === 'stamp' ? 'custom' : type;
+
+    // Set in store as fallback for touch devices
+    useEditorStore.getState().setActiveStamp({ 
+        type: finalType, 
+        customAssetId: assetId 
+    });
+
+    // Auto-switch to stamp tool
+    setActiveTool('stamp');
+
+    e.dataTransfer.setData('assetType', finalType);
     if (assetId) {
       e.dataTransfer.setData('customAssetId', assetId);
     }
-    e.dataTransfer.effectAllowed = 'move';
+    
+    e.dataTransfer.effectAllowed = 'copyMove';
+
+    // VISUAL FEEDBACK: Force a high-quality drag image
+    const target = e.currentTarget as HTMLElement;
+    
+    // Find the primary visual (image or icon container)
+    const visual = target.querySelector('img') || target.querySelector('.text-muted') || target;
+    
+    if (e.dataTransfer.setDragImage) {
+        // Center the drag image on the cursor (assuming 64x64 or 48x48 standard icons)
+        // This ensures the object follows the cursor naturally
+        try {
+             const rect = visual.getBoundingClientRect();
+             e.dataTransfer.setDragImage(visual as Element, rect.width / 2, rect.height / 2);
+        } catch(err) {
+             // Fallback for elements that can't be used directly as drag image
+             e.dataTransfer.setDragImage(target, target.offsetWidth / 2, target.offsetHeight / 2);
+        }
+    }
+  };
+
+  const onDragEnd = () => {
+    // Optional: clear active stamp after a delay to ensure drop has processed
+    setTimeout(() => {
+        useEditorStore.getState().setActiveStamp(null);
+    }, 100);
   };
 
   const navigateToTool = (asset: CustomAsset) => {
@@ -631,11 +664,19 @@ export const AssetCatalog: React.FC<AssetCatalogProps> = ({ mode = 'library' }) 
     return (
       <div
         key={asset.id}
-        draggable={mode === 'stamp'}
+        draggable={mode === 'stamp' || mode === 'library'}
         onDragStart={(e) => onDragStart(e, asset.type === 'stamp' ? 'custom' : asset.type, asset.id)}
+        onDragEnd={onDragEnd}
+        onTouchStart={() => {
+            // Immediate registration for touch devices
+            useEditorStore.getState().setActiveStamp({ 
+                type: asset.type === 'stamp' ? 'custom' : asset.type, 
+                customAssetId: asset.id 
+            });
+        }}
         onClick={(e) => handleAssetClick(asset, e)}
         className={clsx(
-            "group relative flex flex-col items-center justify-center p-2 rounded-xl transition-all border aspect-square overflow-hidden",
+            "group relative flex flex-col items-center justify-center p-2 rounded-xl transition-all border aspect-square overflow-hidden drag-handle",
             isActive && selectedIds.size === 0
                 ? "bg-orange-500/20 border-orange-500 ring-2 ring-orange-500/50 z-10" 
                 : isMultiSelected
@@ -645,11 +686,11 @@ export const AssetCatalog: React.FC<AssetCatalogProps> = ({ mode = 'library' }) 
         )}
         style={{ touchAction: 'none' }}
       >
-        <img src={asset.thumbnailUrl || asset.previewUrl} alt={asset.name} className="w-full h-full object-contain mb-1 rounded drop-shadow-md transition-transform group-hover:scale-110 duration-300" />
+        <img src={asset.thumbnailUrl || asset.previewUrl} alt={asset.name} className="w-full h-full object-contain mb-1 rounded drop-shadow-md transition-transform group-hover:scale-110 duration-300 pointer-events-none" />
         
         {/* Selection Indicator Badge */}
         {(isActive && selectedIds.size === 0) && (
-            <div className="absolute top-1 left-1 bg-orange-500 text-white p-1 rounded-lg shadow-lg">
+            <div className="absolute top-1 left-1 bg-orange-500 text-white p-1 rounded-lg shadow-lg pointer-events-none">
                 <Check size={10} strokeWidth={4} />
             </div>
         )}
@@ -822,23 +863,31 @@ export const AssetCatalog: React.FC<AssetCatalogProps> = ({ mode = 'library' }) 
                         {builtinStamps.map((stamp) => (
                             <div
                             key={stamp.type}
-                            draggable={mode === 'stamp'}
+                            draggable={true}
                             onDragStart={(e) => onDragStart(e, stamp.type)}
+                            onDragEnd={onDragEnd}
+                            onTouchStart={() => {
+                                // Immediate registration for touch devices
+                                useEditorStore.getState().setActiveStamp({ 
+                                    type: stamp.type, 
+                                    customAssetId: undefined 
+                                });
+                            }}
                             onClick={() => { 
                                 if (mode === 'library') {
                                     setActiveTool('stamp'); 
                                 }
                             }}
                             className={clsx(
-                                "group flex flex-col items-center justify-center p-4 rounded-xl bg-black/20 hover:bg-black/40 transition-all border border-theme hover:border-orange-500/50 aspect-square",
-                                mode === 'stamp' ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+                                "group flex flex-col items-center justify-center p-4 rounded-xl bg-black/20 hover:bg-black/40 transition-all border border-theme hover:border-orange-500/50 aspect-square drag-handle",
+                                (mode === 'stamp' || mode === 'library') ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
                             )}
                             style={{ touchAction: 'none' }}
                             >
-                            <div className="text-muted group-hover:text-orange-500 mb-3 transition-colors scale-125 group-hover:scale-150 duration-300">
+                            <div className="text-muted group-hover:text-orange-500 mb-3 transition-colors scale-125 group-hover:scale-150 duration-300 pointer-events-none">
                                 {stamp.icon}
                             </div>
-                            <span className="text-[10px] text-muted font-black uppercase tracking-tighter text-center">{stamp.label}</span>
+                            <span className="text-[10px] text-muted font-black uppercase tracking-tighter text-center pointer-events-none">{stamp.label}</span>
                             </div>
                         ))}
                         

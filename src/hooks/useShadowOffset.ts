@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { PointLight, GlobalLighting, ShadowSettings } from '../types/map';
+import { PointLight, GlobalLighting } from '../types/map';
 
 interface ShadowOffset {
   x: number;
@@ -16,12 +16,12 @@ export const useShadowOffset = (
   assetY: number,
   pointLights: PointLight[],
   globalLighting: GlobalLighting,
-  settings?: ShadowSettings
+  settings?: any
 ): ShadowOffset => {
   return useMemo(() => {
-    // 1. Manual Direction Mode
-    if (settings?.enabled && settings.useDynamicDirection === false) {
-        const rad = ((settings.direction ?? 45) * Math.PI) / 180;
+    // 1. Fixed Direction Mode
+    if (settings && settings.useDynamicDirection === false) {
+        const rad = (settings.direction || 45) * (Math.PI / 180);
         return {
             x: Math.cos(rad) * settings.x,
             y: Math.sin(rad) * settings.x,
@@ -39,6 +39,7 @@ export const useShadowOffset = (
 
     // Process Point Lights
     for (const light of pointLights) {
+      if (!light.visible) continue;
       const dx = assetX - light.x;
       const dy = assetY - light.y;
       const distSq = dx * dx + dy * dy;

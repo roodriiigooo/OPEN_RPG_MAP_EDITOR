@@ -79,3 +79,18 @@ html {
 .animate-scroll-text {
   animation: scroll-text var(--scroll-duration, 8s) ease-in-out infinite alternate;
 }
+
+/* Drag and Drop Ghost Styles */
+.dnd-poly-drag-image {
+    opacity: 0.7 !important;
+    pointer-events: none !important;
+    z-index: 999999 !important;
+    filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5)) !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+/* Ensure the dragged element itself looks active */
+.drag-handle:active {
+    opacity: 0.4;
+}
