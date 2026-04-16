@@ -90,7 +90,7 @@ jobs:
           prerelease: false
           files: release/ORPGME.exe
           body: |
-            ## 🚀 New Version Available
+            ## 🚀 New Windows Version Available
             
             Version extracted from `version_info.txt`: **${{ steps.get_version.outputs.version }}**
             

@@ -36,6 +36,8 @@ interface EditorStore {
   setIsHoveringLeft: (hovering: boolean) => void;
   isHoveringRight: boolean;
   setIsHoveringRight: (hovering: boolean) => void;
+  activeStamp: { type: string; customAssetId?: string } | null;
+  setActiveStamp: (stamp: { type: string; customAssetId?: string } | null) => void;
 }
 
 export const useEditorStore = create<EditorStore>((set) => ({
@@ -69,4 +71,6 @@ export const useEditorStore = create<EditorStore>((set) => ({
   setIsHoveringLeft: (hovering) => set({ isHoveringLeft: hovering }),
   isHoveringRight: false,
   setIsHoveringRight: (hovering) => set({ isHoveringRight: hovering }),
+  activeStamp: null,
+  setActiveStamp: (activeStamp) => set({ activeStamp }),
 }));

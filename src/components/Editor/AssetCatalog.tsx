@@ -188,7 +188,12 @@ export const AssetCatalog: React.FC<AssetCatalogProps> = ({ mode = 'library' }) 
     }
 
     if (mode === 'library') {
-        navigateToTool(asset);
+        if (asset.type === 'stamp') {
+            useEditorStore.getState().setActiveStamp({ type: 'custom', customAssetId: asset.id });
+            setActiveTool('stamp');
+        } else {
+            navigateToTool(asset);
+        }
     } else if (mode === 'terrain') {
         setTilingSetId(asset.id);
         setPaintingMode('auto-tile');
