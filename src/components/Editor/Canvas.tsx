@@ -724,16 +724,27 @@ const InternalCanvas: React.FC = () => {
 
     if (!assetType) return;
 
-    // 3. Layer Validation
+    // 3. Layer Validation - STRICT RESTRICTIONS
     let targetLayerId = activeLayerId;
     const currentLayer = layers.find(l => l.id === targetLayerId);
-    if (!currentLayer || (currentLayer.type !== 'object' && currentLayer.id !== 'stamp-layer')) {
+
+    // CRITICAL: Block insertion into structural layers
+    if (currentLayer && (currentLayer.type === 'wall' || currentLayer.type === 'terrain' || currentLayer.id === 'background-layer')) {
+        useNotificationStore.getState().showToast(
+            "Invalid Layer", 
+            `Objects cannot be added to ${currentLayer.name}. Please select an Object layer.`, 
+            "error"
+        );
+        return;
+    }
+    
+    if (!targetLayerId) {
         const fallbackLayer = layers.find(l => l.type === 'object' || l.id === 'stamp-layer');
         if (fallbackLayer) {
             targetLayerId = fallbackLayer.id;
             useMapStore.getState().setActiveLayer(fallbackLayer.id);
         } else {
-            useNotificationStore.getState().showToast("No Object Layer", "Please select or create an Object layer.", "warn");
+            useNotificationStore.getState().showToast("Action Blocked", "Please create an Object layer first.", "warn");
             return;
         }
     }
