@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@font-face { font-family: 'Alternity'; src: url('/assets/fonts/Alternity-8w7J.ttf') format('truetype'); }
+@font-face { font-family: 'Breathe Fire'; src: url('/assets/fonts/BreatheFire-65pg.ttf') format('truetype'); }
+@font-face { font-family: 'Britannian'; src: url('/assets/fonts/Britannian-J4oB.ttf') format('truetype'); }
+@font-face { font-family: 'Dragnel'; src: url('/assets/fonts/DragnelRegular-q2wGl.ttf') format('truetype'); }
+@font-face { font-family: 'Dragonfly'; src: url('/assets/fonts/Dragonfly-z9jl.ttf') format('truetype'); }
+@font-face { font-family: 'Dragonwick'; src: url('/assets/fonts/DragonwickRegular-lgXV.ttf') format('truetype'); }
+@font-face { font-family: 'Eyvindr'; src: url('/assets/fonts/Eyvindr-lpdZ.ttf') format('truetype'); }
+@font-face { font-family: 'High Drowic'; src: url('/assets/fonts/HighDrowic-LGAD.ttf') format('truetype'); }
+@font-face { font-family: 'Magna Veritas'; src: url('/assets/fonts/MagnaVeritas-JRmm.ttf') format('truetype'); }
+@font-face { font-family: 'Runewood'; src: url('/assets/fonts/Runewood-e9Lvp.ttf') format('truetype'); }
+@font-face { font-family: 'The Wild Breath of Zelda'; src: url('/assets/fonts/TheWildBreathOfZelda-15Lv.ttf') format('truetype'); }
+@font-face { font-family: 'Vecna'; src: url('/assets/fonts/Vecna-oppx.ttf') format('truetype'); }
+
+:root {
+  --bg-editor: #020617;
+  --bg-panel: #0f172a;
+  --bg-sidebar: #1e293b;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --accent: #3b82f6;
+  --border: #1e293b;
+  --border-width: 1px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--bg-editor);
+  color: var(--text-main);
+  height: 100dvh;
+  width: 100vw;
+}
+
+html {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Theme overrides for standard components if needed */
+.bg-editor { background-color: var(--bg-editor); }
+.bg-panel { background-color: var(--bg-panel); }
+.bg-sidebar { background-color: var(--bg-sidebar); }
+.text-main { color: var(--text-main); }
+.text-muted { color: var(--text-muted); }
+.text-accent { color: var(--accent); }
+.bg-accent { background-color: var(--accent); }
+.border-theme { 
+  border-color: var(--border); 
+  border-width: var(--border-width);
+}
+
+@keyframes scroll-text {
+  0%, 20% { transform: translateX(0); }
+  80%, 100% { transform: translateX(var(--scroll-dist, 0)); }
+}
+
+.animate-scroll-text {
+  animation: scroll-text var(--scroll-duration, 8s) ease-in-out infinite alternate;
+}

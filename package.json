@@ -1,0 +1,92 @@
+{
+  "name": "openrpgmaps",
+  "private": true,
+  "description": "Open RPG Map Editor",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "test": "vitest run",
+    "build": "tsc && vite build",
+    "build:no-check": "vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
+    "electron:build": "npm run build:no-check && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder build --win --publish never && powershell -Command \"Remove-Item -Path release/LICENSE*, release/license*, release/LICENSES*, release/win-unpacked/LICENSE*, release/win-unpacked/license*, release/win-unpacked/LICENSES* -ErrorAction SilentlyContinue\""
+  },
+  "build": {
+    "appId": "com.openrpgmaps.editor",
+    "productName": "ORPGME",
+    "copyright": "2026 Open Source Community",
+    "directories": {
+      "output": "release"
+    },
+    "icon": "public/favicon.ico",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "!**/node_modules/*/{LICENSE,LICENSE.md,license.txt,LICENSES.chromium.html,LICENSE.electron.txt}",
+      "!LICENSE*",
+      "!license*",
+      "!LICENSES*",
+      "!**/LICENSE.electron.txt",
+      "!**/LICENSES.chromium.html"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "public/favicon.ico",
+      "artifactName": "ORPGME.${ext}",
+      "publish": null,
+      "asar": true
+    },
+    "portable": {
+      "artifactName": "ORPGME.${ext}"
+    },
+    "extraResources": [
+      {
+        "from": "public/favicon.ico",
+        "to": "../dist/favicon.ico"
+      }
+    ],
+    "protocols": []
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "dexie": "^4.4.1",
+    "jspdf": "^4.2.1",
+    "jszip": "^3.10.1",
+    "konva": "^9.3.18",
+    "lucide-react": "^0.479.0",
+    "mobile-drag-drop": "^3.0.0-rc.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-konva": "^19.0.2",
+    "tailwind-merge": "^3.0.2",
+    "use-image": "^1.1.4",
+    "zundo": "^2.3.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.12",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/jszip": "^3.4.1",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/ui": "^4.1.1",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^41.2.0",
+    "electron-builder": "^26.8.1",
+    "jsdom": "^29.0.1",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.0.12",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.1",
+    "vitest": "^4.1.1",
+    "wait-on": "^9.0.5"
+  }
+}
