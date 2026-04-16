@@ -53,9 +53,9 @@ function App() {
   useEffect(() => {
     if (projectName) {
       const authorSuffix = projectAuthor ? ` by ${projectAuthor}` : '';
-      document.title = `Open Source RPG Map Editor - ${projectName}${authorSuffix}`;
+      document.title = `ORPGME - Open Source RPG Map Editor - ${projectName}${authorSuffix}`;
     } else {
-      document.title = 'Open Source RPG Map Editor';
+      document.title = 'ORPGME - Open Source RPG Map Editor';
     }
   }, [projectName, projectAuthor]);
 
