@@ -8,8 +8,7 @@ export const useKeyboardShortcuts = () => {
   const { undo, redo } = useMapStore.temporal.getState();
   const { 
     setActiveTool, 
-    isSidebarVisible, setIsSidebarVisible,
-    isRightSidebarVisible, setIsRightSidebarVisible
+    toggleUI
   } = useEditorStore();
   
   const { 
@@ -77,18 +76,7 @@ export const useKeyboardShortcuts = () => {
       // Sidebar Toggle (TAB)
       if (e.key === 'Tab') {
           e.preventDefault();
-          const editorState = useEditorStore.getState();
-          const leftVisible = editorState.isSidebarVisible;
-          const rightVisible = editorState.isRightSidebarVisible;
-
-          if (leftVisible !== rightVisible) {
-              editorState.setIsSidebarVisible(false);
-              editorState.setIsRightSidebarVisible(false);
-          } else {
-              const nextState = !leftVisible;
-              editorState.setIsSidebarVisible(nextState);
-              editorState.setIsRightSidebarVisible(nextState);
-          }
+          toggleUI();
           return;
       }
 

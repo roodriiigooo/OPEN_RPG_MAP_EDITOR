@@ -38,9 +38,10 @@ interface EditorStore {
   setIsHoveringRight: (hovering: boolean) => void;
   activeStamp: { type: string; customAssetId?: string } | null;
   setActiveStamp: (stamp: { type: string; customAssetId?: string } | null) => void;
+  toggleUI: () => void;
 }
 
-export const useEditorStore = create<EditorStore>((set) => ({
+export const useEditorStore = create<EditorStore>((set, get) => ({
   activeTool: 'project',
   setActiveTool: (tool) => set({ activeTool: tool }), 
   selectionMode: 'single',
@@ -73,4 +74,13 @@ export const useEditorStore = create<EditorStore>((set) => ({
   setIsHoveringRight: (hovering) => set({ isHoveringRight: hovering }),
   activeStamp: null,
   setActiveStamp: (activeStamp) => set({ activeStamp }),
+  toggleUI: () => {
+      const { isSidebarVisible: left, isRightSidebarVisible: right } = get();
+      if (left !== right) {
+          set({ isSidebarVisible: false, isRightSidebarVisible: false });
+      } else {
+          const next = !left;
+          set({ isSidebarVisible: next, isRightSidebarVisible: next });
+      }
+  }
 }));

@@ -6,7 +6,8 @@ import { useNotificationStore } from '../../store/useNotificationStore';
 import { 
     ZoomIn, Palette, Keyboard, Pipette, Maximize2, Minimize2,
     Cloud, CloudUpload, CloudOff, AlertCircle, Map as MapIcon,
-    X, MousePointer2, ChevronUp, Focus, Plus, Minus
+    X, MousePointer2, ChevronUp, Focus, Plus, Minus, Columns2,
+    PanelLeftClose
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -14,11 +15,16 @@ export const EditorFooter: React.FC = () => {
   const activeMapId = useProjectStore(s => s.activeMapId);
   const { maps, saveStatus, lastError, setActiveMapId } = useProjectStore();
   const { showAlert } = useNotificationStore();
-  const zoom = useEditorStore(s => s.viewportZoom);
-  const setZoom = useEditorStore(s => s.setViewportZoom);
-  const bgColor = useEditorStore(s => s.editorBgColor);
-  const setBgColor = useEditorStore(s => s.setEditorBgColor);
-  const triggerCenter = useEditorStore(s => s.triggerCenter);
+  
+  const { 
+    viewportZoom: zoom, 
+    setViewportZoom: setZoom, 
+    editorBgColor: bgColor, 
+    setEditorBgColor: setBgColor, 
+    triggerCenter, 
+    toggleUI 
+  } = useEditorStore();
+
   const resetMapStore = useMapStore(s => s.resetState);
 
   const activeMap = useMemo(() => {
@@ -190,6 +196,14 @@ export const EditorFooter: React.FC = () => {
       {/* 2. Shortcuts Legend */}
       <div className="flex-1 flex items-center gap-8 px-8 overflow-hidden">
         <div className="flex items-center gap-3">
+            <button 
+                onClick={toggleUI}
+                className="p-1 hover:bg-white/10 rounded transition-all group"
+                title="Toggle Sidebars (TAB)"
+            >
+                <PanelLeftClose size={14} className="text-white transition-transform group-hover:scale-110" />
+            </button>
+
             <button 
                 onClick={toggleFullScreen}
                 className="p-1 hover:bg-white/10 rounded transition-all group"
