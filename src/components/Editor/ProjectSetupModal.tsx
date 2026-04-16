@@ -57,7 +57,7 @@ export const ProjectSetupModal: React.FC = () => {
         setLoading(true);
         setError(false);
         try {
-            const response = await fetch('https://api.github.com/repos/roodriiigooo/PWNAGOTCHI-CUSTOM-FACES-MOD/contributors');
+            const response = await fetch('https://api.github.com/repos/roodriiigooo/OPEN_RPG_MAP_EDITOR/contributors');
             if (!response.ok) throw new Error('Failed to fetch');
             const data: Contributor[] = await response.json();
             // Sort by contributions descending

@@ -118,7 +118,7 @@ export const ToolSidebar: React.FC = () => {
         </button>
 
         <a 
-          href="https://github.com/roodriiigooo" 
+          href="https://github.com/roodriiigooo/OPEN_RPG_MAP_EDITOR" 
           target="_blank" 
           rel="noopener noreferrer"
           className="p-3 rounded-xl transition-all flex flex-col items-center justify-center bg-black/20 border-2 border-transparent text-muted hover:bg-black/40 hover:text-main group relative"
