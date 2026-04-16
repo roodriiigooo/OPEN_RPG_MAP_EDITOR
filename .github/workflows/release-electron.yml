@@ -22,20 +22,78 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+      
+      - name: Extract Product Version from File
+        id: get_version
+        shell: powershell
+        run: |
+          $Version = "0.0.0"
+          $TagName = "v0.0.0"
+          $VersionFile = "version_info.txt"
+          
+          if (Test-Path $VersionFile) {
+            $ProductVersionLine = Get-Content $VersionFile | Select-String -Pattern "ProductVersion', u'(.*?)'"
+            
+            if ($ProductVersionLine) {
+              $Version = $ProductVersionLine.Matches[0].Groups[1].Value.Trim()
+              $TagName = "v" + $Version
+            }
+          }
+          
+          if ([string]::IsNullOrEmpty($Version)) { $Version = "0.0.0" }
+          if ([string]::IsNullOrEmpty($TagName)) { $TagName = "v0.0.0" }
+          $OutputFile = $env:GITHUB_OUTPUT
+          "version=$Version" | Out-File -FilePath $OutputFile -Encoding UTF8 -Append
+          "tag=$TagName" | Out-File -FilePath $OutputFile -Encoding UTF8 -Append
 
       - name: Build and Package Electron
         run: npm run electron:build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          
+      - name: Check for Release Tag and Get Message
+        id: check_release
+        shell: powershell
+        run: |
+          $CommitSubject = git log -1 --pretty=format:%s
+          $CommitBody = git log -1 --pretty=format:%b
+          $isRelease = "false"
+          
+          if ($CommitSubject -like "*[release]*") {
+            $isRelease = "true"
+          }
+          $OutputFile = $env:GITHUB_OUTPUT
+          $Delimiter = "EOF" + (Get-Date -Format 'HHmmss')
+          $BodyContent = $CommitBody
+          # Saída 1: Simples (is_release)
+          "is_release=$isRelease" | Out-File -FilePath $OutputFile -Encoding UTF8 -Append
+          
+          # Saída 2: Simples (commit_subject)
+          "commit_subject=$CommitSubject" | Out-File -FilePath $OutputFile -Encoding UTF8 -Append
+          # Saída 3: Multiline (commit_body)
+          "commit_body<<$Delimiter" | Out-File -FilePath $OutputFile -Encoding UTF8 -Append
+          $BodyContent | Out-File -FilePath $OutputFile -Encoding UTF8 -Append
+          $Delimiter | Out-File -FilePath $OutputFile -Encoding UTF8 -Append
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.run_number }}
-          name: ORPGME v${{ github.run_number }}
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: ORPGME v${{ steps.get_version.outputs.version }}
           draft: false
           prerelease: false
           files: release/ORPGME.exe
+          body: |
+            ## 🚀 New Version Available
+            
+            Version extracted from `version_info.txt`: **${{ steps.get_version.outputs.version }}**
+            
+            Automatic build generated from commit:
+            > ${{ steps.check_release.outputs.commit_subject }}
+            
+            ---
+            
+            ${{ steps.check_release.outputs.commit_body }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
