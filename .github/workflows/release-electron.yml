@@ -47,11 +47,20 @@ jobs:
           "tag=$TagName" | Out-File -FilePath $OutputFile -Encoding UTF8 -Append
 
       - name: Build and Package Electron
-        run: npm run electron:build
+        shell: powershell
+        run: |
+          # Sync package.json version with extracted version
+          $version = "${{ steps.get_version.outputs.version }}"
+          $packageJson = Get-Content package.json | ConvertFrom-Json
+          $packageJson.version = $version
+          $packageJson | ConvertTo-Json -Depth 100 | Out-File package.json -Encoding UTF8
+          
+          # Execute build
+          npm run electron:build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
-          
+
       - name: Check for Release Tag and Get Message
         id: check_release
         shell: powershell
@@ -85,7 +94,7 @@ jobs:
           prerelease: false
           files: release/ORPGME.exe
           body: |
-            ## 🚀 New Version Available
+            ## 🚀 New Windows Version Available!
             
             Version extracted from `version_info.txt`: **${{ steps.get_version.outputs.version }}**
             
