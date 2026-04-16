@@ -122,8 +122,8 @@ export const ProjectActions: React.FC = () => {
     <div className="flex gap-4 p-4 bg-panel border-b border-theme items-center justify-between">
       <div className="flex gap-3 items-center">
         {/* System Icon */}
-        <div className="w-10 h-10 rounded-xl bg-black/20 border border-theme shrink-0 shadow-inner flex items-center justify-center">
-            <img src="./favicon.ico" alt="System Icon" className="w-full h-full object-contain" />
+        <div className="w-10 h-10 rounded-xl bg-black/20 shrink-0 shadow-inner flex items-center justify-center">
+            <img src="./icon.png" alt="System Icon" className="w-full h-full object-contain" />
         </div>
 
         {/* Project Identity */}
