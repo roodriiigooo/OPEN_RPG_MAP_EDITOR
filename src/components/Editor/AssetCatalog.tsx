@@ -164,19 +164,7 @@ export const AssetCatalog: React.FC<AssetCatalogProps> = ({ mode = 'library' }) 
     
     e.dataTransfer.effectAllowed = 'copyMove';
 
-    // VISUAL FEEDBACK: Optimized for speed
-    const target = e.currentTarget as HTMLElement;
-    const visual = target.querySelector('img') || target.querySelector('.text-muted') || target;
-    
-    if (e.dataTransfer.setDragImage) {
-        // Use fixed offsets (32, 32) instead of getBoundingClientRect for instant start
-        // This avoids layout recalculation on touch start
-        try {
-             e.dataTransfer.setDragImage(visual as Element, 32, 32);
-        } catch(err) {
-             e.dataTransfer.setDragImage(target, 32, 32);
-        }
-    }
+    // VISUAL FEEDBACK: Disabled as per request
   };
 
   const onDragEnd = () => {

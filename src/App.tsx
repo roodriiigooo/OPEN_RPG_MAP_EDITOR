@@ -16,7 +16,7 @@ import { ObjectList } from './components/Editor/ObjectList';
 import { ThemeManager } from './components/Editor/ThemeManager';
 import { EditorFooter } from './components/Editor/EditorFooter';
 import { DragFollower } from './components/Editor/DragFollower';
-import { Map as MapIcon, Plus, ChevronLeft, ChevronRight, Layers, Settings2 } from 'lucide-react';
+import { Map as MapIcon, Plus, ChevronLeft, ChevronRight, Layers, Settings2, Maximize } from 'lucide-react';
 import { useAutoSave } from './hooks/useAutoSave';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useMapSync } from './hooks/useMapSync';
@@ -33,6 +33,17 @@ function App() {
   useKeyboardShortcuts();
   useMapSync();
   useCustomFonts();
+
+  const [isViewportSmall, setIsViewportSmall] = React.useState(false);
+
+  useEffect(() => {
+    const checkSize = () => {
+      setIsViewportSmall(window.innerWidth < 1024 || window.innerHeight < 600);
+    };
+    checkSize();
+    window.addEventListener('resize', checkSize);
+    return () => window.removeEventListener('resize', checkSize);
+  }, []);
 
   const activeMapId = useProjectStore(s => s.activeMapId);
   const mapStoreId = useMapStore(s => s.id);
@@ -87,6 +98,26 @@ function App() {
     };
     restoreSession();
   }, []);
+
+  if (isViewportSmall) {
+    return (
+      <div className="h-screen w-screen bg-slate-950 flex flex-col items-center justify-center p-8 text-center space-y-6">
+        <div className="w-20 h-20 rounded-3xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center animate-pulse">
+            <Maximize size={40} className="text-orange-500" />
+        </div>
+        <div className="space-y-2 max-w-md">
+            <h1 className="text-xl font-black text-main uppercase tracking-widest">Resolution Too Low</h1>
+            <p className="text-sm text-muted leading-relaxed font-bold uppercase tracking-tighter">
+                This system requires a larger viewport than the current one to display its features correctly. 
+                Please increase your window size or use a device with a larger screen.
+            </p>
+        </div>
+        <div className="text-[10px] text-orange-500/50 font-mono uppercase tracking-[0.2em]">
+            Required: 1024x600
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[100dvh] w-screen text-main overflow-hidden font-sans" style={{ backgroundColor: editorBgColor }}>
