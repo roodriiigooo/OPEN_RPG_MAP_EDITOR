@@ -164,7 +164,12 @@ export const AssetCatalog: React.FC<AssetCatalogProps> = ({ mode = 'library' }) 
     
     e.dataTransfer.effectAllowed = 'copyMove';
 
-    // VISUAL FEEDBACK: Disabled as per request
+    // VISUAL FEEDBACK: Set an empty image to completely hide the ghost/ghosting effect
+    const img = new Image();
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; // 1x1 transparent pixel
+    if (e.dataTransfer.setDragImage) {
+        e.dataTransfer.setDragImage(img, 0, 0);
+    }
   };
 
   const onDragEnd = () => {
