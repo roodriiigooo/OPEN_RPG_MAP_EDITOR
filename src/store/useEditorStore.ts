@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import Konva from 'konva';
 
 export type ToolType = 'select' | 'hand' | 'catalog' | 'stamp' | 'terrain' | 'wall' | 'light' | 'room' | 'project' | 'text';
-export type SelectionMode = 'single' | 'area';
+export type WallDrawMode = 'free' | 'line' | 'ortho' | 'diagonal';
 export type EditorTheme = 'dark' | 'light' | 'dracula' | 'comic' | 'high-contrast';
 
 interface EditorStore {

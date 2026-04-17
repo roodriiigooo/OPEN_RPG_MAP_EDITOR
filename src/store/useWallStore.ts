@@ -7,8 +7,6 @@ interface WallToolState {
   setIsDrawing: (isDrawing: boolean) => void;
   drawingPoints: number[];
   setDrawingPoints: (points: number[]) => void;
-  addPoint: (x: number, y: number) => void;
-  clearDrawing: () => void;
   drawingMode: WallDrawingMode;
   setDrawingMode: (mode: WallDrawingMode) => void;
   isEraser: boolean;
@@ -19,11 +17,9 @@ interface WallToolState {
 
 export const useWallStore = create<WallToolState>((set) => ({
   isDrawing: false,
-  setIsDrawing: (isDrawing) => set({ isDrawing, drawingPoints: [] }),
+  setIsDrawing: (isDrawing) => set({ isDrawing }),
   drawingPoints: [],
   setDrawingPoints: (points) => set({ drawingPoints: points }),
-  addPoint: (x, y) => set((state) => ({ drawingPoints: [...state.drawingPoints, x, y] })),
-  clearDrawing: () => set({ drawingPoints: [], isDrawing: false }),
   drawingMode: 'freehand',
   setDrawingMode: (mode) => set({ drawingMode: mode }),
   isEraser: false,

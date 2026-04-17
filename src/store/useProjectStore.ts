@@ -75,11 +75,15 @@ export const useProjectStore = create<ProjectStore>((set) => ({
 
   removeMap: (mapId) =>
     set((state) => {
+      const isRemovingActive = state.activeMapId === mapId;
       const newMaps = state.maps.filter((m) => m.id !== mapId);
+      
       let newActiveMapId = state.activeMapId;
-      if (state.activeMapId === mapId) {
+      if (isRemovingActive) {
+        // If removing the last map, set to null, otherwise pick the first available
         newActiveMapId = newMaps.length > 0 ? newMaps[0].id : null;
       }
+
       return {
         maps: newMaps,
         activeMapId: newActiveMapId,

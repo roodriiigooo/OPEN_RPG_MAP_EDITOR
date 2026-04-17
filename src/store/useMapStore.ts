@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { temporal } from 'zundo';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { MapState, MapMetadata, Layer, Asset, GridConfig, GlobalLighting, PointLight, PostProcessing, WallSegment, Room, AtmosphereSettings } from '../types/map';
+import { MapState, MapMetadata, Asset, GridConfig, GlobalLighting, PointLight, PostProcessing } from '../types/map';
 import { useProjectStore } from './useProjectStore';
 import { TileData, TileType, TerrainTileset, Tileset } from '../types/tiling';
 import { 
@@ -18,7 +18,6 @@ import {
 interface ExtendedMapState extends MapState {
   id: string;
   selectedAssetIds: string[];
-  selectedRoomId: string | null;
   ghostFloorId: string | null;
   ghostFloorOpacity: number;
   lastTileUpdate: number;
@@ -27,9 +26,8 @@ interface ExtendedMapState extends MapState {
 interface MapStoreActions {
   updateMetadata: (metadata: MapMetadata) => void;
   updateGrid: (grid: Partial<GridConfig>) => void;
-  updateExportMasks: (masks: Partial<NonNullable<MapState['exportMasks']>>) => void;
-  addLayer: (layer: Layer) => void;
-  updateLayer: (layerId: string, updates: Partial<Layer>) => void;
+  addLayer: (layer: any) => void;
+  updateLayer: (layerId: string, updates: Partial<any>) => void;
   removeLayer: (layerId: string) => void;
   setActiveLayer: (layerId: string | null) => void;
   reorderLayers: (layerIds: string[]) => void;
@@ -41,18 +39,12 @@ interface MapStoreActions {
   setSelectedAsset: (assetId: string | null) => void;
   setSelectedAssetIds: (assetIds: string[]) => void;
   duplicateObject: (id: string) => void;
-  reorderAssets: (assetIds: string[]) => void;
-  reorderLayerObjects: (layerId: string, objectIds: string[]) => void;
   updateGlobalLighting: (lighting: Partial<GlobalLighting>) => void;
-  updateAtmosphere: (atmosphere: Partial<AtmosphereSettings>) => void;
   addPointLight: (light: Omit<PointLight, 'zIndex'>) => void;
   updatePointLight: (lightId: string, updates: Partial<PointLight>) => void;
-  updatePointLights: (lightIds: string[], updates: Partial<PointLight>) => void;
   removePointLight: (lightId: string) => void;
   removeObjects: (ids: string[]) => void;
   updateLayerFilters: (layerId: string, filters: Partial<PostProcessing>) => void;
-  addWall: (layerId: string, points: number[], type?: 'manual' | 'smart') => void;
-  removeWall: (id: string, pointsIndex: number) => void;
   addTile: (tile: Omit<TileData, 'bitmask' | 'variantIndex' | 'layerId'>) => void;
   addTiles: (tiles: Omit<TileData, 'bitmask' | 'variantIndex' | 'layerId'>[]) => void;
   bulkUpdateTiles: (toAdd: any[], toRemove: {x: number, y: number, type: TileType, layerId?: string}[]) => void;
@@ -76,13 +68,11 @@ const getSafeUUID = () => {
 
 const initialState: ExtendedMapState = {
   id: '',
-  metadata: { name: '', resolution: { width: 3500, height: 2400 }, ratio: '3.5:2.4', ppi: 300 },
+  metadata: { name: '', resolution: { width: 3500, height: 2400 }, ratio: '3.5:2.4' },
   layers: [],
   assets: [],
-  rooms: [],
   activeLayerId: null,
   selectedAssetIds: [],
-  selectedRoomId: null,
   ghostFloorId: null,
   ghostFloorOpacity: 0.3,
   grid: { type: 'square', size: 100, visible: true, snapToGrid: true, color: '#666666', opacity: 1 },
@@ -92,23 +82,14 @@ const initialState: ExtendedMapState = {
         enabled: false, 
         color: '#ffffff', 
         intensity: 1, 
-        blendMode: 'multiply', 
         sunEnabled: false, 
         sunDirection: 45, 
         sunIntensity: 0.5 
     }, 
     pointLights: [], 
-    atmosphere: { 
-        enabled: false, 
-        vignette: 0.5, 
-        noise: 0.1, 
-        colorGrading: '#ffffff' 
-    } 
   },
-  walls: [],
   tiles: [],
   tilesets: [],
-  exportMasks: { lines: [], inverted: false },
 };
 
 export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
@@ -119,13 +100,6 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
 
         updateMetadata: (metadata) => set({ metadata }),
         updateGrid: (grid) => set((state) => ({ grid: { ...state.grid, ...grid } })),
-        
-        updateExportMasks: (masks) => set((state) => ({ 
-            exportMasks: { 
-                lines: masks.lines ?? state.exportMasks?.lines ?? [],
-                inverted: masks.inverted ?? state.exportMasks?.inverted ?? false
-            } 
-        })),
         
         addLayer: (layer) => set((state) => {
             if ((layer.type === 'wall' || layer.type === 'terrain') && state.layers.some(l => l.type === layer.type)) {
@@ -147,12 +121,9 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
         }),
 
         setActiveLayer: (layerId) => set({ activeLayerId: layerId }),
-        reorderLayers: (layerIds) => set((state) => ({ layers: layerIds.map((id) => state.layers.find((l) => l.id === id)).filter((l): l is Layer => !!l) })),
+        reorderLayers: (layerIds) => set((state) => ({ layers: layerIds.map((id) => state.layers.find((l) => l.id === id)).filter((l): l is any => !!l) })),
         
         addAsset: (asset) => set((state) => {
-            const layer = state.layers.find(l => l.id === asset.layerId);
-            if (layer?.type === 'background' || layer?.type === 'wall' || layer?.type === 'terrain') return state;
-
             const zIndex = state.assets.length + state.lighting.pointLights.length;
             return { assets: [...state.assets, { ...asset, zIndex }], selectedAssetIds: [asset.id] };
         }),
@@ -178,100 +149,24 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
             if (!original) return state;
 
             const newId = getSafeUUID();
-            const newName = `${(original as any).name || (asset ? asset.type : 'Point Light')} copy`;
-            const layerId = original.layerId;
+            const zIndex = state.assets.length + state.lighting.pointLights.length;
 
-            const layerObjects = [
-                ...state.assets.filter(a => a.layerId === layerId),
-                ...state.lighting.pointLights.filter(l => l.layerId === layerId)
-            ].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
-
-            const originalIdx = layerObjects.findIndex(o => o.id === id);
-            const newObject = asset 
-                ? { ...asset, id: newId, name: newName, zIndex: original.zIndex } 
-                : { ...light!, id: newId, name: newName, zIndex: original.zIndex };
-
-            const newAssets = [...state.assets];
-            const newLights = [...state.lighting.pointLights];
-
-            if (asset) newAssets.push(newObject as Asset);
-            else newLights.push(newObject as PointLight);
-
-            const newOrder = layerObjects.map(o => o.id);
-            newOrder.splice(originalIdx + 1, 0, newId);
-
-            newAssets.forEach(a => {
-                if (a.layerId === layerId) {
-                    const idx = newOrder.indexOf(a.id);
-                    if (idx !== -1) a.zIndex = idx;
-                }
-            });
-            newLights.forEach(l => {
-                if (l.layerId === layerId) {
-                    const idx = newOrder.indexOf(l.id);
-                    if (idx !== -1) l.zIndex = idx;
-                }
-            });
-
-            return {
-                assets: newAssets,
-                lighting: { ...state.lighting, pointLights: newLights },
-                selectedAssetIds: [newId]
-            };
-        }),
-
-        reorderAssets: (assetIds) => set((state) => {
-            const reordered = assetIds.map((id) => state.assets.find((a) => a.id === id)).filter((a): a is Asset => !!a);
-            const remaining = state.assets.filter(a => !assetIds.includes(a.id));
-            return { assets: [...remaining, ...reordered] };
-        }),
-
-        reorderLayerObjects: (layerId, objectIds) => set((state) => {
-            const layer = state.layers.find(l => l.id === layerId);
-            if (layer?.type === 'background') return state;
-
-            const newAssets = [...state.assets];
-            const newLights = [...state.lighting.pointLights];
-            
-            objectIds.forEach((id, index) => {
-                const assetIdx = newAssets.findIndex(a => a.id === id);
-                if (assetIdx !== -1) {
-                    newAssets[assetIdx] = { ...newAssets[assetIdx], zIndex: index };
-                } else {
-                    const lightIdx = newLights.findIndex(l => l.id === id);
-                    if (lightIdx !== -1) {
-                        newLights[lightIdx] = { ...newLights[lightIdx], zIndex: index };
-                    }
-                }
-            });
-
-            return { 
-                assets: newAssets, 
-                lighting: { ...state.lighting, pointLights: newLights } 
-            };
+            if (asset) return { assets: [...state.assets, { ...asset, id: newId, x: asset.x + 20, y: asset.y + 20, zIndex }], selectedAssetIds: [newId] };
+            return { lighting: { ...state.lighting, pointLights: [...state.lighting.pointLights, { ...light!, id: newId, x: light!.x + 20, y: light!.y + 20, zIndex }] }, selectedAssetIds: [newId] };
         }),
 
         updateGlobalLighting: (lighting) => set((state) => ({ lighting: { ...state.lighting, global: { ...state.lighting.global, ...lighting } } })),
-        updateAtmosphere: (atmosphere) => set((state) => ({ lighting: { ...state.lighting, atmosphere: { ...state.lighting.atmosphere, ...atmosphere } } })),
         addPointLight: (light) => set((state) => {
-            const layer = state.layers.find(l => l.id === light.layerId);
-            if (layer?.type === 'background' || layer?.type === 'wall' || layer?.type === 'terrain') return state;
-
             const zIndex = state.assets.length + state.lighting.pointLights.length;
             return { 
                 lighting: { 
                     ...state.lighting, 
-                    pointLights: [...state.lighting.pointLights, { ...light, zIndex, visible: true, locked: false }] 
-                } 
+                    pointLights: [...state.lighting.pointLights, { ...light, zIndex }] 
+                },
+                selectedAssetIds: [light.id]
             };
         }),
         updatePointLight: (lightId, updates) => set((state) => ({ lighting: { ...state.lighting, pointLights: state.lighting.pointLights.map((l) => l.id === lightId ? { ...l, ...updates } : l) } })),
-        updatePointLights: (lightIds, updates) => set((state) => ({ 
-            lighting: { 
-                ...state.lighting, 
-                pointLights: state.lighting.pointLights.map((l) => lightIds.includes(l.id) ? { ...l, ...updates } : l) 
-            } 
-        })),
         removePointLight: (lightId) => set((state) => ({ lighting: { ...state.lighting, pointLights: state.lighting.pointLights.filter((l) => l.id !== lightId), selectedAssetIds: state.selectedAssetIds.filter(id => id !== lightId) } })),
         
         removeObjects: (ids) => set((state) => ({
@@ -299,14 +194,6 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
             )
         })),
 
-        addWall: (layerId, points, type = 'manual') => set((state) => {
-            const layer = state.layers.find(l => l.id === layerId);
-            if (layer?.type === 'background') return state;
-            return { walls: [...state.walls, { id: getSafeUUID(), layerId, points: [points], type }] };
-        }),
-        
-        removeWall: (id, pointsIndex) => set((state) => ({ walls: state.walls.map((w) => w.id === id ? { ...w, points: w.points.filter((_, i) => i !== pointsIndex) } : w).filter(w => w.points.length > 0) })),
-
         addTile: (tileData) => {
           set((state) => {
             const wallLayer = state.layers.find(l => l.type === 'wall');
@@ -316,9 +203,6 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
             if (tileData.type === TileType.WALL) targetLayerId = wallLayer?.id || targetLayerId;
             if (tileData.type === TileType.GROUND) targetLayerId = terrainLayer?.id || targetLayerId;
 
-            const targetLayer = state.layers.find(l => l.id === targetLayerId);
-            if (targetLayer?.type === 'background') return state;
-            
             const layerId = targetLayerId || 'terrain-layer';
             
             const filteredTiles = state.tiles.filter(t => !(t.x === tileData.x && t.y === tileData.y && t.type === tileData.type && t.layerId === layerId));
@@ -377,9 +261,6 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
                 if (tile.type === TileType.GROUND) layerId = terrainLayer?.id || layerId;
             }
             
-            const targetLayer = state.layers.find(l => l.id === layerId);
-            if (targetLayer?.type === 'background') return;
-
             nextTiles = nextTiles.filter(t => !(t.x === tile.x && t.y === tile.y && t.type === tile.type && t.layerId === layerId));
             nextTiles.push({ ...tile, layerId, bitmask: 0, variantIndex: 0 } as TileData);
             affectedSet.add(`${tile.x},${tile.y}`);
@@ -441,9 +322,6 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
                 if (tile.type === TileType.GROUND) layerId = terrainLayer?.id || layerId;
             }
             
-            const targetLayer = state.layers.find(l => l.id === layerId);
-            if (targetLayer?.type === 'background') return;
-
             nextTiles = nextTiles.filter(t => !(t.x === tile.x && t.y === tile.y && t.type === tile.type && t.layerId === layerId));
             nextTiles.push({ ...tile, layerId, bitmask: 0, variantIndex: 0 } as TileData);
             
@@ -476,9 +354,6 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
             let layerId = state.activeLayerId;
             if (type === TileType.WALL) layerId = wallLayer?.id || layerId;
             if (type === TileType.GROUND) layerId = terrainLayer?.id || layerId;
-
-            const targetLayer = state.layers.find(l => l.id === layerId);
-            if (targetLayer?.type === 'background') return state;
 
             const removedTile = state.tiles.find(t => t.x === x && t.y === y && t.type === type && t.layerId === layerId);
             if (!removedTile) return state;
@@ -531,9 +406,6 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
             if (type === TileType.WALL) layerId = wallLayer?.id || layerId;
             if (type === TileType.GROUND) layerId = terrainLayer?.id || layerId;
             
-            const targetLayer = state.layers.find(l => l.id === layerId);
-            if (targetLayer?.type === 'background') return;
-
             nextTiles = nextTiles.filter(t => !(t.x === coord.x && t.y === coord.y && t.type === type && t.layerId === layerId));
             const neighbors = isHex ? getHexNeighborCoords(coord.x, coord.y) : getNeighborCoords(coord.x, coord.y);
             neighbors.forEach(n => affectedSet.add(`${isHex ? (n as any).q : (n as any).x},${isHex ? (n as any).r : (n as any).y}`));
@@ -564,9 +436,6 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
             if (type === TileType.WALL) layerId = wallLayer?.id || layerId;
             if (type === TileType.GROUND) layerId = terrainLayer?.id || layerId;
 
-            const targetLayer = state.layers.find(l => l.id === layerId);
-            if (targetLayer?.type === 'background') return state;
-            
             const isHex = state.grid.type.startsWith('hex-');
             const affectedCoords = isHex ? [{ q: x, r: y }, ...getHexNeighborCoords(x, y)] : [{ x, y }, ...getNeighborCoords(x, y)];
             const newTiles = [...state.tiles];
@@ -590,9 +459,9 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
                       if (isBlobSet) {
                           newTiles[idx] = { ...tile, bitmask: mask, variantIndex: BLOB_MAP[mask] ?? 0, quadrants: undefined };
                       } else if (!isHex) {
-                          newTiles[idx] = { ...tile, bitmask: mask, quadrants: calculateTerrainQuadrants(mask), variantIndex: 0 };
+                          nextTiles[idx] = { ...tile, bitmask: mask, quadrants: calculateTerrainQuadrants(mask), variantIndex: 0 };
                       } else {
-                          newTiles[idx] = { ...tile, bitmask: mask, variantIndex: tileset ? getBestTileVariant(mask, tileset.bitmaskMap) : 0 };
+                          nextTiles[idx] = { ...tile, bitmask: mask, variantIndex: tileset ? getBestTileVariant(mask, tileset.bitmaskMap) : 0 };
                       }
                   }
               });
@@ -639,10 +508,10 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
         limit: 50,
         partialize: (state) => {
           const {
-            updateMetadata, updateGrid, updateExportMasks, addLayer, updateLayer, removeLayer, setActiveLayer, reorderLayers,
+            updateMetadata, updateGrid, addLayer, updateLayer, removeLayer, setActiveLayer, reorderLayers,
             addAsset, updateAsset, updateAssets, moveObjects, removeAsset, setSelectedAsset, setSelectedAssetIds, 
-            reorderAssets, reorderLayerObjects, updateGlobalLighting, updateAtmosphere, addPointLight, updatePointLight, 
-            updatePointLights, removePointLight, removeObjects, updateLayerFilters, addWall, removeWall,
+            updateGlobalLighting, addPointLight, updatePointLight, 
+            removePointLight, removeObjects, updateLayerFilters,
             addTile, removeTile, addTiles, removeTiles, bulkUpdateTiles, updateAutoTilingAround, addTileset, removeTileset,
             classifyAsset, setGhostFloor, resetState,
             ...rest

@@ -9,8 +9,36 @@ export const NEIGHBORS = [
   { dx: -1, dy: 1, bit: SW }, { dx: 0, dy: 1, bit: S },  { dx: 1, dy: 1, bit: SE },
 ];
 
+export const DIAGONAL_ONLY_MASKS: Record<number, number> = {
+    [NW]: 315,
+    [NE]: 45,
+    [SW]: 225,
+    [SE]: 135
+};
+
+export const CARDINAL_BITS = N | S | E | W;
+export const DIAGONAL_BITS = NW | NE | SW | SE;
+
+export function getDiagonalAngles(mask: number): number[] {
+    const angles: number[] = [];
+    if (mask & NW) angles.push(135);
+    if (mask & SE) angles.push(135);
+    if (mask & NE) angles.push(45);
+    if (mask & SW) angles.push(45);
+    
+    // Return unique angles
+    return Array.from(new Set(angles));
+}
+
 export function getMinimalMask(mask: number): number {
     let m = mask;
+    
+    // If it's a pure diagonal connection (no cardinals), preserve the diagonal bits
+    // otherwise the tiling engine treats it as an isolated tile (0)
+    if ((mask & CARDINAL_BITS) === 0 && (mask & DIAGONAL_BITS) !== 0) {
+        return mask;
+    }
+
     if (!(m & N && m & W)) m &= ~NW;
     if (!(m & N && m & E)) m &= ~NE;
     if (!(m & S && m & W)) m &= ~SW;
@@ -83,38 +111,47 @@ export function getTileForQ(mask: number, subPos: 'TL' | 'TR' | 'BL' | 'BR', map
 
     if (mask === 0) return { ...get(13) }; // Isolated
     
-    // REUSING THE EXACT SAME ALGORITHM DEVELOPED FOR 5X3 GRID (TilingConverter.tsx):
+    // 8-neighbor logic for each quadrant
     if (subPos === 'TL') {
         const hasN = mask & N, hasW = mask & W, hasNW = mask & NW;
-        if (!hasN && !hasW) return { ...get(0) }; // Tile 1
-        if (hasN && !hasW) return { ...get(5) };  // Tile 6
-        if (!hasN && hasW) return { ...get(1) };  // Tile 2
-        if (hasN && hasW && !hasNW) return { ...get(9), forceQ: 'TL' }; // Use SE Internal (Tile 10), Quad TL
-        return { ...get(6) }; // Center (Tile 7)
+        // Internal Corner Case OR Pure Diagonal Connection
+        if ((hasN && hasW && !hasNW) || (!hasN && !hasW && hasNW) || (hasN && !hasW && hasNW) || (!hasN && hasW && hasNW)) {
+            return { ...get(9), forceQ: 'TL' }; // Use Tile 10 (index 9) - Internal SE fill
+        }
+        if (hasN && !hasW) return { ...get(5) };  // Vertical Edge
+        if (!hasN && hasW) return { ...get(1) };  // Horizontal Edge
+        if (hasN && hasW) return { ...get(6) };   // Center fill
+        return { ...get(0) }; // Outer Corner
     }
     if (subPos === 'TR') {
         const hasN = mask & N, hasE = mask & E, hasNE = mask & NE;
-        if (!hasN && !hasE) return { ...get(2) }; // Tile 3
-        if (hasN && !hasE) return { ...get(7) };  // Tile 8
-        if (!hasN && hasE) return { ...get(1) };  // Tile 2
-        if (hasN && hasE && !hasNE) return { ...get(8), forceQ: 'TR' }; // Use SW Internal (Tile 9), Quad TR
-        return { ...get(6) };
+        if ((hasN && hasE && !hasNE) || (!hasN && !hasE && hasNE) || (hasN && !hasE && hasNE) || (!hasN && hasE && hasNE)) {
+            return { ...get(8), forceQ: 'TR' }; // Use Tile 9 (index 8) - Internal SW fill
+        }
+        if (hasN && !hasE) return { ...get(7) }; 
+        if (!hasN && hasE) return { ...get(1) };
+        if (hasN && hasE) return { ...get(6) };
+        return { ...get(2) };
     }
     if (subPos === 'BL') {
         const hasS = mask & S, hasW = mask & W, hasSW = mask & SW;
-        if (!hasS && !hasW) return { ...get(10) }; // Tile 11
-        if (hasS && !hasW) return { ...get(5) };   // Tile 6
-        if (!hasS && hasW) return { ...get(11) };  // Tile 12
-        if (hasS && hasW && !hasSW) return { ...get(4), forceQ: 'BL' }; // Use NE Internal (Tile 5), Quad BL
-        return { ...get(6) };
+        if ((hasS && hasW && !hasSW) || (!hasS && !hasW && hasSW) || (hasS && !hasW && hasSW) || (!hasS && hasW && hasSW)) {
+            return { ...get(4), forceQ: 'BL' }; // Use Tile 5 (index 4) - Internal NE fill
+        }
+        if (hasS && !hasW) return { ...get(5) };
+        if (!hasS && hasW) return { ...get(11) };
+        if (hasS && hasW) return { ...get(6) };
+        return { ...get(10) };
     }
     if (subPos === 'BR') {
         const hasS = mask & S, hasE = mask & E, hasSE = mask & SE;
-        if (!hasS && !hasE) return { ...get(12) }; // Tile 13
-        if (hasS && !hasE) return { ...get(7) };   // Tile 8
-        if (!hasS && hasE) return { ...get(11) };  // Tile 12
-        if (hasS && hasE && !hasSE) return { ...get(3), forceQ: 'BR' }; // Use NW Internal (Tile 4), Quad BR
-        return { ...get(6) };
+        if ((hasS && hasE && !hasSE) || (!hasS && !hasE && hasSE) || (hasS && !hasE && hasSE) || (!hasS && hasE && hasSE)) {
+            return { ...get(3), forceQ: 'BR' }; // Use Tile 4 (index 3) - Internal NW fill
+        }
+        if (hasS && !hasE) return { ...get(7) };
+        if (!hasS && hasE) return { ...get(11) };
+        if (hasS && hasE) return { ...get(6) };
+        return { ...get(12) };
     }
     return { ...get(6) };
 }

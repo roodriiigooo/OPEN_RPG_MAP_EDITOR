@@ -40,6 +40,7 @@ export interface PointLight {
   intensity: number;
   visible: boolean;
   locked: boolean;
+  name?: string;
 }
 
 export interface PostProcessing {

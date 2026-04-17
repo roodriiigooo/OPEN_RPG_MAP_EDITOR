@@ -3,6 +3,7 @@ import { Group, Image } from 'react-konva';
 import { useMapStore } from '../../store/useMapStore';
 import { useAssetStore } from '../../store/useAssetStore';
 import { TileData, Tileset, TileType, TerrainTileset } from '../../types/tiling';
+import { DIAGONAL_ONLY_MASKS, N, S, E, W, getDiagonalAngles } from '../../utils/terrain/tiling';
 import useImage from 'use-image';
 import Konva from 'konva';
 
@@ -59,7 +60,7 @@ export const TileRenderer: React.FC<{ tile: TileData; tileset: Tileset; gridSize
 
   const [image] = useImage(resolvedImageUrl);
   const isBlobSet = (tileset as any).bitmaskMap?.isBlobSet;
-  
+
   const crop = useMemo(() => {
     if (!image) return { x: 0, y: 0, width: 0, height: 0 };
     if (!isBlobSet && (tile.type === TileType.GROUND || tile.type === TileType.WALL) && tile.quadrants) return { x: 0, y: 0, width: 0, height: 0 };

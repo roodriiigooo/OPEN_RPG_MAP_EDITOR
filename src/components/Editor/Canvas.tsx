@@ -339,7 +339,7 @@ const InternalCanvas: React.FC = () => {
       const wallLayer = layers.find(l => l.type === 'wall');
       if (wallLayer?.locked) { useNotificationStore.getState().showToast("Walls Locked", "Unlock the 'Walls' layer in the tree to edit.", "warn"); return; }
       const { isEraser, activeTilesetId } = useWallStore.getState();
-      if (isEraser || wallDrawingMode === 'line') { setDragStartCoord(coord); setCurrentCoord(coord); }
+      if (isEraser || wallDrawingMode === 'line') { setDragStartCoord(pointer); setCurrentCoord(pointer); }
       else { useWallStore.getState().setIsDrawing(true); const ts = tilesets.find(t => t.id === activeTilesetId) || tilesets.find(t => t.type === TileType.WALL); if (ts) useMapStore.getState().addTile({ x: coord.x, y: coord.y, tilesetId: ts.id, type: TileType.WALL }); }
       isPaintingRef.current = true;
     } else if (activeTool === 'terrain' && (e.evt.button === 0 || e.evt.touches)) {
@@ -384,12 +384,12 @@ const InternalCanvas: React.FC = () => {
       const { layers, tilesets } = useMapStore.getState();
       const wallLayer = layers.find(l => l.type === 'wall'); if (wallLayer?.locked) return;
       const { isEraser, activeTilesetId } = useWallStore.getState();
-      if (wallDrawingMode === 'line') setCurrentCoord(coord);
+      if (wallDrawingMode === 'line') setCurrentCoord(pointer);
       else if (isEraser) useMapStore.getState().removeTile(coord.x, coord.y, TileType.WALL);
       else { const ts = tilesets.find(t => t.id === activeTilesetId) || tilesets.find(t => t.type === TileType.WALL); if (ts) useMapStore.getState().addTile({ x: coord.x, y: coord.y, tilesetId: ts.id, type: TileType.WALL }); }
     } else if (activeTool === 'terrain' && isPaintingRef.current) {
       const { brushSettings, isEraser } = useTerrainStore.getState();
-      if (brushSettings.mode === 'area') setCurrentCoord(coord);
+      if (brushSettings.mode === 'area') setCurrentCoord(pointer);
       else if (isEraser) useMapStore.getState().removeTile(coord.x, coord.y, TileType.GROUND);
       else { const ts = useMapStore.getState().tilesets.find(t => t.id === brushSettings.tilingSetId) || useMapStore.getState().tilesets.find(t => t.type === TileType.GROUND); if (ts) useMapStore.getState().addTile({ x: coord.x, y: coord.y, tilesetId: ts.id, type: TileType.GROUND }); }
     } else if (isDrawingRoom) setRoomCurrentPoint(pointer);
@@ -419,8 +419,12 @@ const InternalCanvas: React.FC = () => {
       const { isEraser, activeTilesetId } = useWallStore.getState();
       if ((isEraser || wallDrawingMode === 'line') && dragStartCoord && currentCoord) {
         const areaPoints: { x: number, y: number }[] = [];
-        if (wallDrawingMode === 'line' && !isEraser) areaPoints.push(...getLinePoints(dragStartCoord.x, dragStartCoord.y, currentCoord.x, currentCoord.y));
-        else { for (let x = Math.min(dragStartCoord.x, currentCoord.x); x <= Math.max(dragStartCoord.x, currentCoord.x); x++) for (let y = Math.min(dragStartCoord.y, currentCoord.y); y <= Math.max(dragStartCoord.y, currentCoord.y); y++) areaPoints.push({ x, y }); }
+        if (wallDrawingMode === 'line' && !isEraser) areaPoints.push(...getLinePoints(getGridCoord(dragStartCoord.x, dragStartCoord.y).x, getGridCoord(dragStartCoord.x, dragStartCoord.y).y, getGridCoord(currentCoord.x, currentCoord.y).x, getGridCoord(currentCoord.x, currentCoord.y).y));
+        else { 
+            const startG = getGridCoord(dragStartCoord.x, dragStartCoord.y);
+            const endG = getGridCoord(currentCoord.x, currentCoord.y);
+            for (let x = Math.min(startG.x, endG.x); x <= Math.max(startG.x, endG.x); x++) for (let y = Math.min(startG.y, endG.y); y <= Math.max(startG.y, endG.y); y++) areaPoints.push({ x, y }); 
+        }
         if (isEraser) useMapStore.getState().removeTiles(areaPoints, TileType.WALL);
         else { const ts = useMapStore.getState().tilesets.find(t => t.id === activeTilesetId) || useMapStore.getState().tilesets.find(t => t.type === TileType.WALL); if (ts) useMapStore.getState().addTiles(areaPoints.map(p => ({ ...p, tilesetId: ts.id, type: TileType.WALL }))); }
       }
@@ -873,6 +877,7 @@ const InternalCanvas: React.FC = () => {
           {layer.id === 'background-layer' && <Rect id="map-background" x={0} y={0} width={metadata.resolution.width} height={metadata.resolution.height} fill={metadata.backgroundColor || '#ffffff'} perfectDrawEnabled={false} />}
           {layer.type === 'terrain' && <TilingRenderer layerId={layer.id} type={TileType.GROUND} />}
           {layer.type === 'wall' && <TilingRenderer layerId={layer.id} type={TileType.WALL} />}
+          
           {sortedObjects.map(obj => {
               const isSelected = selectedAssetIds.includes(obj.id);
               let canInteractWithThis = false;
@@ -915,8 +920,8 @@ const InternalCanvas: React.FC = () => {
           {drawingPoints.length >= 2 && <Line points={drawingPoints} stroke="#ef4444" strokeWidth={3/viewportZoom} lineDash={[5, 5]} lineCap="round" perfectDrawEnabled={false} />}
           {dragStartCoord && currentCoord && (
             <Group>
-              {activeTool === 'wall' && wallDrawingMode === 'line' && <Line points={[dragStartCoord.x * useMapStore.getState().grid.size + useMapStore.getState().grid.size/2, dragStartCoord.y * useMapStore.getState().grid.size + useMapStore.getState().grid.size/2, currentCoord.x * useMapStore.getState().grid.size + useMapStore.getState().grid.size/2, currentCoord.y * useMapStore.getState().grid.size + useMapStore.getState().grid.size/2]} stroke="#ef4444" strokeWidth={2/viewportZoom} dash={[5, 5]} />}
-              {activeTool === 'terrain' && terrainSettings.mode === 'area' && <Rect x={Math.min(dragStartCoord.x, currentCoord.x) * useMapStore.getState().grid.size} y={Math.min(dragStartCoord.y, currentCoord.y) * useMapStore.getState().grid.size} width={(Math.abs(currentCoord.x - dragStartCoord.x) + 1) * useMapStore.getState().grid.size} height={(Math.abs(currentCoord.y - dragStartCoord.y) + 1) * useMapStore.getState().grid.size} stroke="#f97316" strokeWidth={2/viewportZoom} dash={[5, 5]} fill="rgba(249, 115, 22, 0.1)" />}
+              {activeTool === 'wall' && wallDrawingMode === 'line' && <Line points={[dragStartCoord.x, dragStartCoord.y, currentCoord.x, currentCoord.y]} stroke="#ef4444" strokeWidth={2/viewportZoom} dash={[5, 5]} />}
+              {activeTool === 'terrain' && terrainSettings.mode === 'area' && <Rect x={Math.min(dragStartCoord.x, currentCoord.x)} y={Math.min(dragStartCoord.y, currentCoord.y)} width={Math.abs(currentCoord.x - dragStartCoord.x)} height={Math.abs(currentCoord.y - dragStartCoord.y)} stroke="#f97316" strokeWidth={2/viewportZoom} dash={[5, 5]} fill="rgba(249, 115, 22, 0.1)" />}
             </Group>
           )}
           {selectionRect && (

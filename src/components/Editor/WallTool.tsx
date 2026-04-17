@@ -65,11 +65,9 @@ export const WallTool: React.FC = () => {
                 </div>
             </div>
 
-            <div className="bg-black/20 rounded-lg p-3 border border-theme/50">
-                <p className="text-[10px] text-muted italic text-center leading-relaxed uppercase font-bold tracking-tighter">
-                {isEraser 
-                    ? 'Click or drag to remove walls'
-                    : 'Click and drag to draw walls'}
+            <div className="bg-black/20 rounded-lg p-3 border border-theme">
+                <p className="text-[10px] text-muted leading-relaxed italic">
+                    {isEraser ? 'Click or drag over walls to remove them' : 'Click and drag to draw walls'}
                 </p>
             </div>
         </div>

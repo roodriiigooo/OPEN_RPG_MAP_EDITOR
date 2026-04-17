@@ -133,7 +133,23 @@ export const LevelManager: React.FC = () => {
     showConfirm(
         "Delete Level?",
         `Are you sure you want to delete the level "${map.metadata.name}"? This cannot be undone.`,
-        () => removeMap(map.id),
+        () => {
+            const isActive = map.id === activeMapId;
+            removeMap(map.id);
+            
+            // If the deleted map was active, the store already picked a new one.
+            // We need to make sure the MapStore is either cleared or updated.
+            if (isActive) {
+                const nextActiveMapId = useProjectStore.getState().activeMapId;
+                const nextActiveMap = maps.find(m => m.id === nextActiveMapId);
+                
+                if (nextActiveMap) {
+                    useMapStore.getState().resetState({ ...nextActiveMap, selectedAssetIds: [] } as any);
+                } else {
+                    useMapStore.getState().resetState();
+                }
+            }
+        },
         { type: 'error', confirmLabel: 'Delete' }
     );
   };
