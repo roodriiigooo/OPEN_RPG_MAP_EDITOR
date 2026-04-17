@@ -26,8 +26,16 @@ import { getLinePoints } from '../../utils/terrain/tiling';
 
 const CustomImageRenderer: React.FC<{ url: string; commonProps: any }> = ({ url, commonProps }) => {
   const [image] = useImage(url);
+  const { ref, ...restProps } = commonProps;
+
+  useEffect(() => {
+    if (image && ref?.current) {
+        ref.current.getLayer()?.batchDraw();
+    }
+  }, [image, ref]);
+
   if (!image) return null;
-  return <Image {...commonProps} image={image} offsetX={image.width / 2} offsetY={image.height / 2} />;
+  return <Image {...restProps} ref={ref} image={image} offsetX={image.width / 2} offsetY={image.height / 2} />;
 };
 
 const LightInteractionPoint: React.FC<{ light: IPointLight; isSelected: boolean; onSelect: (id: string, shift: boolean) => void; onDragMove: (id: string, e: any) => void; onDragEnd: (id: string, e: any) => void; scale: number; canInteract: boolean; }> = ({ light, isSelected, onSelect, onDragMove, onDragEnd, scale, canInteract }) => {
@@ -62,6 +70,8 @@ const AssetRenderer: React.FC<{ asset: Asset; isSelected: boolean; onSelect: (id
   const [textSize, setTextSize] = useState({ w: 0, h: 0 });
   
   const customAssets = useAssetStore(s => s.customAssets);
+  const customAssetUrl = asset.type === 'custom' ? (customAssets.find(a => a.id === asset.customAssetId)?.previewUrl || '') : '';
+  const [image] = useImage(customAssetUrl);
 
   useEffect(() => { 
       if (isSelected && !multiSelect && trRef.current && shapeRef.current) { 
@@ -69,6 +79,12 @@ const AssetRenderer: React.FC<{ asset: Asset; isSelected: boolean; onSelect: (id
           trRef.current.getLayer()?.batchDraw(); 
       } 
   }, [isSelected, multiSelect, asset]);
+
+  useEffect(() => {
+    if (image && shapeRef.current) {
+        shapeRef.current.getLayer()?.batchDraw();
+    }
+  }, [image]);
 
   useEffect(() => {
       if (asset.type === 'text' && textRef.current) {

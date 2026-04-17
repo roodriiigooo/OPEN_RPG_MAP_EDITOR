@@ -35,6 +35,7 @@ function App() {
   useCustomFonts();
 
   const activeMapId = useProjectStore(s => s.activeMapId);
+  const mapStoreId = useMapStore(s => s.id);
   const editorBgColor = useEditorStore(s => s.editorBgColor);
   
   const isSidebarVisible = useEditorStore(s => s.isSidebarVisible);
@@ -122,8 +123,13 @@ function App() {
           </div>
 
           <div className="flex-1 relative flex items-center justify-center overflow-hidden">
-            {activeMapId ? (
-              <Canvas />
+            {activeMapId && mapStoreId === activeMapId ? (
+              <Canvas key={activeMapId} />
+            ) : activeMapId ? (
+              <div className="flex flex-col items-center gap-4 p-12 text-center">
+                  <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-orange-500 font-black uppercase tracking-widest text-[10px]">Synchronizing Level Data</p>
+              </div>
             ) : (
               <div className="flex flex-col items-center gap-6 p-12 text-center animate-in fade-in zoom-in duration-500">
                   <div className="w-24 h-24 rounded-full bg-black/20 flex items-center justify-center text-muted shadow-2xl border border-theme/50 relative">
@@ -158,7 +164,6 @@ function App() {
         <EditorFooter />
       </main>
 
-      <DragFollower />
       <ExportDialog /><PrintStudioDialog /><AssetImportDialog /><ImportProgressDialog /><PackExportDialog /><ProjectSetupModal /><NotificationModal /><ToastContainer />
     </div>
   );

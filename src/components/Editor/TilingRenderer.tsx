@@ -95,6 +95,7 @@ export const TileRenderer: React.FC<{ tile: TileData; tileset: Tileset; gridSize
 });
 
 export const TilingRenderer: React.FC<{ layerId: string; type?: TileType }> = React.memo(({ layerId, type }) => {
+  const activeMapId = useMapStore(s => s.id);
   const tiles = useMapStore((state) => state.tiles);
   const tilesets = useMapStore((state) => state.tilesets);
   const gridSize = useMapStore((state) => state.grid.size);
@@ -109,22 +110,24 @@ export const TilingRenderer: React.FC<{ layerId: string; type?: TileType }> = Re
 
   useEffect(() => {
     if (groupRef.current) {
+        const group = groupRef.current;
+        group.clearCache();
+        
+        // Use a longer delay for the initial load after a level switch
+        const delay = 300; 
+        
         const timeout = setTimeout(() => {
-            const group = groupRef.current;
-            if (group) {
-                group.clearCache();
-                if (filteredTiles.length > 50) {
-                    // Check if group has actual content/size before caching to avoid Konva error
-                    const box = group.getClientRect();
-                    if (box.width > 0 && box.height > 0) {
-                        group.cache();
-                    }
+            if (group && filteredTiles.length > 50) {
+                const box = group.getClientRect();
+                if (box.width > 0 && box.height > 0) {
+                    group.cache();
+                    group.getLayer()?.batchDraw();
                 }
             }
-        }, 100);
+        }, delay);
         return () => clearTimeout(timeout);
     }
-  }, [lastTileUpdate, filteredTiles.length]);
+  }, [lastTileUpdate, filteredTiles.length, activeMapId]);
 
   return (
     <Group ref={groupRef}>

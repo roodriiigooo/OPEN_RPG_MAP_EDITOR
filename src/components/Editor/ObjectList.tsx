@@ -292,28 +292,35 @@ export const ObjectList: React.FC = () => {
                             }}
                             className="bg-black/40 text-main text-[10px] px-1 py-0.5 rounded border border-orange-500 outline-none w-full font-bold"
                         />
+                        <button onClick={() => saveEdit(item.id)} className="p-0.5 bg-orange-600 rounded text-white hover:bg-orange-500 transition-colors">
+                            <Check size={10} />
+                        </button>
+                        <button onClick={cancelEdit} className="p-0.5 bg-black/40 rounded text-muted hover:text-white transition-colors border border-theme">
+                            <X size={10} />
+                        </button>
                     </div>
                 ) : (
-                    <div className="flex items-center gap-1 overflow-hidden">
+                    <div 
+                        onDoubleClick={(e) => startEditing(e, item.id, isLight ? ((item as PointLight).name || 'Point Light') : ((item as Asset).name || (item as Asset).type))}
+                        className="flex items-center gap-1 overflow-hidden"
+                    >
                         <p className="text-[10px] font-bold truncate uppercase tracking-tight">
                             {isLight 
                                 ? (item as PointLight).name || 'Point Light' 
                                 : ((item as Asset).name || (item as Asset).type)}
                         </p>
-                        <button 
-                            onClick={(e) => startEditing(e, item.id, isLight ? ((item as PointLight).name || 'Point Light') : ((item as Asset).name || (item as Asset).type))}
-                            className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/40 rounded text-muted transition-all"
-                        >
-                            <Edit2 size={10} />
-                        </button>
                     </div>
                 )}
             </div>
 
-            <div className={clsx(
-                "flex items-center gap-1 transition-opacity",
-                (isLocked || !isVisible) ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-            )}>
+            <div className="flex items-center gap-1">
+                <button 
+                    onClick={(e) => startEditing(e, item.id, isLight ? ((item as PointLight).name || 'Point Light') : ((item as Asset).name || (item as Asset).type))}
+                    className="p-1 rounded hover:bg-black/40 text-muted hover:text-orange-500 transition-all"
+                    title="Rename"
+                >
+                    <Edit2 size={12} />
+                </button>
                 <button
                     onClick={toggleVisibility}
                     className={clsx("p-1 rounded hover:bg-black/40 transition-colors", !isVisible ? 'text-orange-500/50' : 'text-muted hover:text-main')}
@@ -405,7 +412,6 @@ export const ObjectList: React.FC = () => {
                                 setActiveLayer(layer.id); 
                                 if (isWallLayer) useEditorStore.getState().setActiveTool('wall');
                                 else if (isTerrainLayer) useEditorStore.getState().setActiveTool('terrain');
-                                else if (!isBackgroundLayer) toggleLayerCollapse(layer.id); 
                             }}
                             className={clsx(
                                 "group flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors border-l-2",
@@ -418,7 +424,15 @@ export const ObjectList: React.FC = () => {
                             <div className="text-muted/50 cursor-grab active:cursor-grabbing">
                                 <GripVertical size={10} />
                             </div>
-                            <div className="text-muted/50">
+                            <div 
+                                className="text-muted/50 hover:text-orange-500 transition-colors p-1 -m-1"
+                                onClick={(e) => {
+                                    if (!isWallLayer && !isTerrainLayer && !isBackgroundLayer) {
+                                        e.stopPropagation();
+                                        toggleLayerCollapse(layer.id);
+                                    }
+                                }}
+                            >
                                 {isWallLayer ? (
                                     <Fence size={14} className="text-orange-500" />
                                 ) : isTerrainLayer ? (
@@ -442,33 +456,35 @@ export const ObjectList: React.FC = () => {
                                             }}
                                             className="bg-black/40 text-main text-[10px] px-1 py-0.5 rounded border border-orange-500 outline-none w-full font-bold uppercase"
                                         />
+                                        <button onClick={() => saveLayerEdit(layer.id)} className="p-0.5 bg-orange-600 rounded text-white hover:bg-orange-500 transition-colors shrink-0">
+                                            <Check size={10} />
+                                        </button>
+                                        <button onClick={cancelEdit} className="p-0.5 bg-black/40 rounded text-muted hover:text-white transition-colors border border-theme shrink-0">
+                                            <X size={10} />
+                                        </button>
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-1 overflow-hidden">
+                                    <div 
+                                        onDoubleClick={(e) => {
+                                            if (!isWallLayer && !isBackgroundLayer && !isTerrainLayer) {
+                                                startEditingLayer(e, layer);
+                                            }
+                                        }}
+                                        className="flex items-center gap-1 overflow-hidden"
+                                    >
                                         <span className={clsx("text-[10px] font-black uppercase tracking-widest truncate", (isWallLayer || isBackgroundLayer || isTerrainLayer) && "text-main")}>{layer.name}</span>
-                                        <button 
-                                            onClick={(e) => startEditingLayer(e, layer)}
-                                            className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/40 rounded text-muted transition-all"
-                                        >
-                                            <Edit2 size={10} />
-                                        </button>
                                     </div>
                                 )}
                             </div>
 
                             <div className="flex items-center gap-1">
                                 {!isWallLayer && !isBackgroundLayer && !isTerrainLayer && (
-                                    <button
-                                        onClick={(e) => toggleFX(e, layer.id)}
-                                        className={clsx(
-                                            "px-1.5 py-0.5 rounded text-[9px] font-black transition-all border",
-                                            isFXOpen 
-                                                ? "bg-orange-600 border-orange-500 text-white shadow-lg" 
-                                                : "bg-black/40 border-theme text-muted hover:text-orange-500 group-hover:border-orange-500/30"
-                                        )}
-                                        title="Layer Effects (FX)"
+                                    <button 
+                                        onClick={(e) => startEditingLayer(e, layer)}
+                                        className="p-1 rounded hover:bg-black/40 text-muted hover:text-orange-500 transition-all"
+                                        title="Rename Layer"
                                     >
-                                        FX
+                                        <Edit2 size={12} />
                                     </button>
                                 )}
                                 <button
@@ -496,49 +512,6 @@ export const ObjectList: React.FC = () => {
                                 )}
                             </div>
                         </div>
-
-                        {isFXOpen && !isWallLayer && !isBackgroundLayer && !isTerrainLayer && (
-                            <div className="p-4 bg-orange-500/5 border-y border-orange-500/20 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <div className="grid grid-cols-1 gap-3">
-                                    <div className="space-y-1">
-                                        <div className="flex justify-between items-center">
-                                            <label className="text-[9px] font-bold text-muted uppercase">Brightness</label>
-                                            <span className="text-[9px] font-mono text-main">{layer.filters.brightness}%</span>
-                                        </div>
-                                        <input
-                                            type="range" min="-100" max="100" step="1"
-                                            value={layer.filters.brightness}
-                                            onChange={(e) => updateLayerFilters(layer.id, { brightness: parseInt(e.target.value) })}
-                                            className="w-full h-1 bg-black/40 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="flex justify-between items-center">
-                                            <label className="text-[9px] font-bold text-muted uppercase">Contrast</label>
-                                            <span className="text-[9px] font-mono text-main">{layer.filters.contrast.toFixed(1)}x</span>
-                                        </div>
-                                        <input
-                                            type="range" min="-100" max="100" step="1"
-                                            value={layer.filters.contrast}
-                                            onChange={(e) => updateLayerFilters(layer.id, { contrast: parseInt(e.target.value) })}
-                                            className="w-full h-1 bg-black/40 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="flex justify-between items-center">
-                                            <label className="text-[9px] font-bold text-muted uppercase">Sepia / Vintage</label>
-                                            <span className="text-[9px] font-mono text-main">{layer.filters.sepia}%</span>
-                                        </div>
-                                        <input
-                                            type="range" min="0" max="100" step="1"
-                                            value={layer.filters.sepia}
-                                            onChange={(e) => updateLayerFilters(layer.id, { sepia: parseInt(e.target.value) })}
-                                            className="w-full h-1 bg-black/40 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
 
                         {!isCollapsed && !isWallLayer && !isBackgroundLayer && !isTerrainLayer && (
                             <div className="flex flex-col bg-black/10 animate-in fade-in slide-in-from-top-1 duration-200 border-t border-theme/30 max-h-[420px] overflow-y-auto custom-scrollbar">
