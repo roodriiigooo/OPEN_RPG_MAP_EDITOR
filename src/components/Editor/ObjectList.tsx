@@ -119,24 +119,25 @@ export const ObjectList: React.FC = () => {
     e.preventDefault();
     if (!draggedItemId || draggedItemId === overId) return;
 
-    // Get current visual order [Top -> Bottom] which is zIndex Descending
-    const currentLayerObjects = [
+    // Get all objects in this layer, sorted by current zIndex [Bottom -> Top]
+    const layerObjects = [
         ...assets.filter(a => a.layerId === layerId),
         ...pointLights.filter(l => l.layerId === layerId)
-    ].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
+    ].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
 
-    const currentOrder = currentLayerObjects.map(o => o.id);
+    const currentOrder = layerObjects.map(o => o.id);
     const draggedIdx = currentOrder.indexOf(draggedItemId);
     const overIdx = currentOrder.indexOf(overId);
 
     if (draggedIdx === -1 || overIdx === -1) return;
 
+    // Calculate new order
     const newOrder = [...currentOrder];
     newOrder.splice(draggedIdx, 1);
     newOrder.splice(overIdx, 0, draggedItemId);
 
-    // Save back to store in reverse order [Bottom -> Top] for zIndex mapping
-    reorderLayerObjects(layerId, [...newOrder].reverse());
+    // Apply new zIndex order via store
+    reorderLayerObjects(layerId, newOrder);
   };
 
   const onDropOnLayer = (e: React.DragEvent, targetLayerId: string) => {

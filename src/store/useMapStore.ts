@@ -31,6 +31,7 @@ interface MapStoreActions {
   removeLayer: (layerId: string) => void;
   setActiveLayer: (layerId: string | null) => void;
   reorderLayers: (layerIds: string[]) => void;
+  reorderLayerObjects: (layerId: string, objectIds: string[]) => void;
   addAsset: (asset: Omit<Asset, 'zIndex'>) => void;
   updateAsset: (assetId: string, updates: Partial<Asset>) => void;
   updateAssets: (assetIds: string[], updates: Partial<Asset>) => void;
@@ -123,6 +124,32 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
         setActiveLayer: (layerId) => set({ activeLayerId: layerId }),
         reorderLayers: (layerIds) => set((state) => ({ layers: layerIds.map((id) => state.layers.find((l) => l.id === id)).filter((l): l is any => !!l) })),
         
+        reorderLayerObjects: (layerId, objectIds) => set((state) => {
+            const nextAssets = [...state.assets];
+            const nextLights = [...state.lighting.pointLights];
+
+            // Assign new zIndex based on the array order provided [Bottom -> Top]
+            objectIds.forEach((id, index) => {
+                const assetIdx = nextAssets.findIndex(a => a.id === id);
+                if (assetIdx !== -1) {
+                    nextAssets[assetIdx] = { ...nextAssets[assetIdx], zIndex: index };
+                } else {
+                    const lightIdx = nextLights.findIndex(l => l.id === id);
+                    if (lightIdx !== -1) {
+                        nextLights[lightIdx] = { ...nextLights[lightIdx], zIndex: index };
+                    }
+                }
+            });
+
+            return {
+                assets: nextAssets,
+                lighting: {
+                    ...state.lighting,
+                    pointLights: nextLights
+                }
+            };
+        }),
+
         addAsset: (asset) => set((state) => {
             const zIndex = state.assets.length + state.lighting.pointLights.length;
             return { assets: [...state.assets, { ...asset, zIndex }], selectedAssetIds: [asset.id] };
