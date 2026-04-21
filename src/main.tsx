@@ -5,7 +5,15 @@ import { polyfill } from 'mobile-drag-drop';
 import 'mobile-drag-drop/default.css';
 
 // Initialize touch drag and drop polyfill
-polyfill({});
+polyfill({
+    holdToDrag: 300, // Hold for 300ms to start dragging, allowing normal scrolling
+    dragImageTranslateOverride: (event, hoverElement, translatedEvent) => {
+        if (translatedEvent) {
+            translatedEvent.clientX = event.clientX;
+            translatedEvent.clientY = event.clientY;
+        }
+    }
+});
 
 // Force prevent default on touchmove to allow dragging over the canvas
 document.addEventListener('touchmove', (e) => {
