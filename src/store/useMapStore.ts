@@ -275,10 +275,12 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
           const stampLayer = state.layers.find(l => l.type === 'stamp');
           
           const defaultActiveId = state.activeLayerId || stampLayer?.id || 'stamp-layer';
-          
           const isHex = state.grid.type.startsWith('hex-');
-          let nextTiles = [...state.tiles];
           const affectedSet = new Set<string>();
+
+          // Optimization: Pre-calculate target layers and keys to remove
+          const toRemoveKeys = new Set<string>();
+          const newTilesEntries: TileData[] = [];
 
           tilesData.forEach(tile => {
             let layerId = (tile as any).layerId;
@@ -288,23 +290,35 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
                 if (tile.type === TileType.GROUND) layerId = terrainLayer?.id || layerId;
             }
             
-            nextTiles = nextTiles.filter(t => !(t.x === tile.x && t.y === tile.y && t.type === tile.type && t.layerId === layerId));
-            nextTiles.push({ ...tile, layerId, bitmask: 0, variantIndex: 0 } as TileData);
+            const key = `${tile.x},${tile.y},${tile.type},${layerId}`;
+            toRemoveKeys.add(key);
+            newTilesEntries.push({ ...tile, layerId, bitmask: 0, variantIndex: 0 } as TileData);
+            
             affectedSet.add(`${tile.x},${tile.y}`);
             const neighbors = isHex ? getHexNeighborCoords(tile.x, tile.y) : getNeighborCoords(tile.x, tile.y);
             neighbors.forEach(n => affectedSet.add(`${isHex ? (n as any).q : (n as any).x},${isHex ? (n as any).r : (n as any).y}`));
           });
 
+          // Single pass filter is much faster than filter inside forEach
+          const remainingTiles = state.tiles.filter(t => !toRemoveKeys.has(`${t.x},${t.y},${t.type},${t.layerId}`));
+          const nextTiles = [...remainingTiles, ...newTilesEntries];
+
           const worker = new Worker(new URL('../workers/tiling.worker.ts', import.meta.url), { type: 'module' });
           worker.onmessage = (e) => {
             const { updatedTiles } = e.data;
             set((state) => {
-              let finalTiles = [...nextTiles];
-              (updatedTiles as TileData[]).forEach(ut => {
-                  const idx = finalTiles.findIndex(t => t.x === ut.x && t.y === ut.y && t.type === ut.type && t.layerId === ut.layerId);
-                  if (idx !== -1) finalTiles[idx] = ut;
+              const finalTiles = [...nextTiles];
+              const updatedTilesArray = updatedTiles as TileData[];
+              
+              // Map for faster lookups during merge
+              const updateMap = new Map(updatedTilesArray.map(ut => [`${ut.x},${ut.y},${ut.type},${ut.layerId}`, ut]));
+              
+              const mergedTiles = finalTiles.map(t => {
+                  const key = `${t.x},${t.y},${t.type},${t.layerId}`;
+                  return updateMap.get(key) || t;
               });
-              return { tiles: finalTiles, lastTileUpdate: Date.now() };
+
+              return { tiles: mergedTiles, lastTileUpdate: Date.now() };
             });
             worker.terminate();
           };
@@ -320,8 +334,8 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
           const defaultActiveId = state.activeLayerId || stampLayer?.id || 'stamp-layer';
           
           const isHex = state.grid.type.startsWith('hex-');
-          let nextTiles = [...state.tiles];
           const affectedSet = new Set<string>();
+          const toRemoveKeys = new Set<string>();
 
           toRemove.forEach(rem => {
               let layerId = rem.layerId;
@@ -331,16 +345,14 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
                   else layerId = defaultActiveId;
               }
               
-              const prevLen = nextTiles.length;
-              nextTiles = nextTiles.filter(t => !(t.x === rem.x && t.y === rem.y && t.type === rem.type && (!layerId || t.layerId === layerId)));
-              
-              if (nextTiles.length !== prevLen) {
-                  affectedSet.add(`${rem.x},${rem.y}`);
-                  const neighbors = isHex ? getHexNeighborCoords(rem.x, rem.y) : getNeighborCoords(rem.x, rem.y);
-                  neighbors.forEach(n => affectedSet.add(`${isHex ? (n as any).q : (n as any).x},${isHex ? (n as any).r : (n as any).y}`));
-              }
+              const key = `${rem.x},${rem.y},${rem.type},${layerId}`;
+              toRemoveKeys.add(key);
+              affectedSet.add(`${rem.x},${rem.y}`);
+              const neighbors = isHex ? getHexNeighborCoords(rem.x, rem.y) : getNeighborCoords(rem.x, rem.y);
+              neighbors.forEach(n => affectedSet.add(`${isHex ? (n as any).q : (n as any).x},${isHex ? (n as any).r : (n as any).y}`));
           });
 
+          const newTilesEntries: TileData[] = [];
           toAdd.forEach(tile => {
             let layerId = (tile as any).layerId;
             if (!layerId) {
@@ -349,24 +361,25 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
                 if (tile.type === TileType.GROUND) layerId = terrainLayer?.id || layerId;
             }
             
-            nextTiles = nextTiles.filter(t => !(t.x === tile.x && t.y === tile.y && t.type === tile.type && t.layerId === layerId));
-            nextTiles.push({ ...tile, layerId, bitmask: 0, variantIndex: 0 } as TileData);
+            const key = `${tile.x},${tile.y},${tile.type},${layerId}`;
+            toRemoveKeys.add(key); // Remove any existing at this spot
+            newTilesEntries.push({ ...tile, layerId, bitmask: 0, variantIndex: 0 } as TileData);
             
             affectedSet.add(`${tile.x},${tile.y}`);
             const neighbors = isHex ? getHexNeighborCoords(tile.x, tile.y) : getNeighborCoords(tile.x, tile.y);
             neighbors.forEach(n => affectedSet.add(`${isHex ? (n as any).q : (n as any).x},${isHex ? (n as any).r : (n as any).y}`));
           });
 
+          const nextTiles = [...state.tiles.filter(t => !toRemoveKeys.has(`${t.x},${t.y},${t.type},${t.layerId}`)), ...newTilesEntries];
+
           const worker = new Worker(new URL('../workers/tiling.worker.ts', import.meta.url), { type: 'module' });
           worker.onmessage = (e) => {
             const { updatedTiles } = e.data;
             set((state) => {
-              let finalTiles = [...nextTiles];
-              (updatedTiles as TileData[]).forEach(ut => {
-                  const idx = finalTiles.findIndex(t => t.x === ut.x && t.y === ut.y && t.type === ut.type && t.layerId === ut.layerId);
-                  if (idx !== -1) finalTiles[idx] = ut;
-              });
-              return { tiles: finalTiles, lastTileUpdate: Date.now() };
+              const finalTiles = [...nextTiles];
+              const updateMap = new Map((updatedTiles as TileData[]).map(ut => [`${ut.x},${ut.y},${ut.type},${ut.layerId}`, ut]));
+              const mergedTiles = finalTiles.map(t => updateMap.get(`${t.x},${t.y},${t.type},${t.layerId}`) || t);
+              return { tiles: mergedTiles, lastTileUpdate: Date.now() };
             });
             worker.terminate();
           };

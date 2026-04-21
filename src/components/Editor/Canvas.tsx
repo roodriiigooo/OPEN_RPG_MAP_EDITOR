@@ -388,8 +388,9 @@ const InternalCanvas: React.FC = () => {
       else if (isEraser) useMapStore.getState().removeTile(coord.x, coord.y, TileType.WALL);
       else { const ts = tilesets.find(t => t.id === activeTilesetId) || tilesets.find(t => t.type === TileType.WALL); if (ts) useMapStore.getState().addTile({ x: coord.x, y: coord.y, tilesetId: ts.id, type: TileType.WALL }); }
     } else if (activeTool === 'terrain' && isPaintingRef.current) {
+      const coord = getGridCoord(pointer.x, pointer.y);
       const { brushSettings, isEraser } = useTerrainStore.getState();
-      if (brushSettings.mode === 'area') setCurrentCoord(pointer);
+      if (brushSettings.mode === 'area') setCurrentCoord(coord);
       else if (isEraser) useMapStore.getState().removeTile(coord.x, coord.y, TileType.GROUND);
       else { const ts = useMapStore.getState().tilesets.find(t => t.id === brushSettings.tilingSetId) || useMapStore.getState().tilesets.find(t => t.type === TileType.GROUND); if (ts) useMapStore.getState().addTile({ x: coord.x, y: coord.y, tilesetId: ts.id, type: TileType.GROUND }); }
     } else if (isDrawingRoom) setRoomCurrentPoint(pointer);
@@ -921,7 +922,19 @@ const InternalCanvas: React.FC = () => {
           {dragStartCoord && currentCoord && (
             <Group>
               {activeTool === 'wall' && wallDrawingMode === 'line' && <Line points={[dragStartCoord.x, dragStartCoord.y, currentCoord.x, currentCoord.y]} stroke="#ef4444" strokeWidth={2/viewportZoom} dash={[5, 5]} />}
-              {activeTool === 'terrain' && terrainSettings.mode === 'area' && <Rect x={Math.min(dragStartCoord.x, currentCoord.x)} y={Math.min(dragStartCoord.y, currentCoord.y)} width={Math.abs(currentCoord.x - dragStartCoord.x)} height={Math.abs(currentCoord.y - dragStartCoord.y)} stroke="#f97316" strokeWidth={2/viewportZoom} dash={[5, 5]} fill="rgba(249, 115, 22, 0.1)" />}
+              {activeTool === 'terrain' && terrainSettings.mode === 'area' && (
+                  <Rect 
+                    x={Math.min(dragStartCoord.x, currentCoord.x) * useMapStore.getState().grid.size} 
+                    y={Math.min(dragStartCoord.y, currentCoord.y) * useMapStore.getState().grid.size} 
+                    width={(Math.abs(currentCoord.x - dragStartCoord.x) + 1) * useMapStore.getState().grid.size} 
+                    height={(Math.abs(currentCoord.y - dragStartCoord.y) + 1) * useMapStore.getState().grid.size} 
+                    stroke="#f97316" 
+                    strokeWidth={2/viewportZoom} 
+                    dash={[5, 5]} 
+                    fill="rgba(249, 115, 22, 0.1)" 
+                    perfectDrawEnabled={false}
+                  />
+              )}
             </Group>
           )}
           {selectionRect && (
