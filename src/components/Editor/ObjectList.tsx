@@ -34,7 +34,6 @@ export const ObjectList: React.FC = () => {
   const updateLayer = useMapStore((state) => state.updateLayer);
   const removeLayer = useMapStore((state) => state.removeLayer);
   const reorderLayers = useMapStore((state) => state.reorderLayers);
-  const updateLayerFilters = useMapStore((state) => state.updateLayerFilters);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
@@ -43,22 +42,15 @@ export const ObjectList: React.FC = () => {
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
   const [dragOverLayerId, setDragOverLayerId] = useState<string | null>(null);
   const [collapsedLayers, setCollapsedLayers] = useState<Set<string>>(new Set());
-  const [showFXLayerId, setShowFXLayerId] = useState<string | null>(null);
+
+  // Use a ref for faster access during rapid drag events
+  const canDragRef = React.useRef(false);
 
   const toggleLayerCollapse = (id: string) => {
     const newCollapsed = new Set(collapsedLayers);
     if (newCollapsed.has(id)) newCollapsed.delete(id);
     else newCollapsed.add(id);
     setCollapsedLayers(newCollapsed);
-  };
-
-  const toggleFX = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (showFXLayerId === id) setShowFXLayerId(null);
-    else {
-        setShowFXLayerId(id);
-        setActiveLayer(id);
-    }
   };
 
   const startEditing = (e: React.MouseEvent, id: string, initialValue: string) => {
@@ -78,7 +70,7 @@ export const ObjectList: React.FC = () => {
     const newLayer: Layer = {
       id,
       name: `Layer ${layers.length + 1}`,
-      type: 'stamp',
+      type: 'object',
       visible: true,
       locked: false,
       opacity: 1,
@@ -89,11 +81,8 @@ export const ObjectList: React.FC = () => {
 
   const saveEdit = (id: string) => {
     const light = pointLights.find(l => l.id === id);
-    if (light) {
-        updatePointLight(id, { name: editValue });
-    } else {
-        updateAsset(id, { name: editValue });
-    }
+    if (light) updatePointLight(id, { name: editValue });
+    else updateAsset(id, { name: editValue });
     setEditingId(null);
   };
 
@@ -108,6 +97,10 @@ export const ObjectList: React.FC = () => {
   };
 
   const onObjectDragStart = (e: React.DragEvent, id: string, sourceLayerId: string) => {
+    if (!canDragRef.current) {
+        e.preventDefault();
+        return;
+    }
     setDraggedItemId(id);
     e.dataTransfer.setData('objectId', id);
     e.dataTransfer.setData('sourceLayerId', sourceLayerId);
@@ -119,7 +112,6 @@ export const ObjectList: React.FC = () => {
     e.preventDefault();
     if (!draggedItemId || draggedItemId === overId) return;
 
-    // Get all objects in this layer, sorted by current zIndex [Bottom -> Top]
     const layerObjects = [
         ...assets.filter(a => a.layerId === layerId),
         ...pointLights.filter(l => l.layerId === layerId)
@@ -131,12 +123,10 @@ export const ObjectList: React.FC = () => {
 
     if (draggedIdx === -1 || overIdx === -1) return;
 
-    // Calculate new order
     const newOrder = [...currentOrder];
     newOrder.splice(draggedIdx, 1);
     newOrder.splice(overIdx, 0, draggedItemId);
 
-    // Apply new zIndex order via store
     reorderLayerObjects(layerId, newOrder);
   };
 
@@ -156,20 +146,17 @@ export const ObjectList: React.FC = () => {
 
         if (objectId && sourceLayerId !== targetLayerId) {
             const asset = assets.find(a => a.id === objectId);
-            if (asset) {
-                updateAsset(objectId, { layerId: targetLayerId });
-            } else {
+            if (asset) updateAsset(objectId, { layerId: targetLayerId });
+            else {
                 const light = pointLights.find(l => l.id === objectId);
-                if (light) {
-                    updatePointLight(objectId, { layerId: targetLayerId });
-                }
+                if (light) updatePointLight(objectId, { layerId: targetLayerId });
             }
         }
     } else if (type === 'layer') {
         const draggedId = e.dataTransfer.getData('layerId');
         if (!draggedId || draggedId === targetLayerId) return;
 
-        const currentLayersOrder = [...layers].reverse().map(l => l.id); // [Top -> Bottom]
+        const currentLayersOrder = [...layers].reverse().map(l => l.id);
         const draggedIdx = currentLayersOrder.indexOf(draggedId);
         const overIdx = currentLayersOrder.indexOf(targetLayerId);
 
@@ -184,43 +171,18 @@ export const ObjectList: React.FC = () => {
     
     setDraggedItemId(null);
     setDraggedLayerId(null);
-  };
-
-  const onDragOverLayer = (e: React.DragEvent, layerId: string) => {
-    e.preventDefault();
-    if (draggedItemId || draggedLayerId) {
-        setDragOverLayerId(layerId);
-    }
-  };
-
-  const handleDeleteLayer = (e: React.MouseEvent, layer: Layer) => {
-    e.stopPropagation();
-    if (layer.type === 'background' || layer.type === 'wall' || layer.type === 'terrain') return;
-    
-    showConfirm(
-        "Delete Layer?",
-        `Are you sure you want to delete the layer "${layer.name}" and all its contents?`,
-        () => removeLayer(layer.id),
-        { type: 'error', confirmLabel: 'Delete' }
-    );
+    canDragRef.current = false;
   };
 
   const onLayerDragStart = (e: React.DragEvent, id: string) => {
+    if (!canDragRef.current) {
+        e.preventDefault();
+        return;
+    }
     setDraggedLayerId(id);
     e.dataTransfer.setData('layerId', id);
     e.dataTransfer.setData('type', 'layer');
     e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const getAssetIcon = (type: string) => {
-    switch (type) {
-      case 'square': return <Square size={14} />;
-      case 'circle': return <Circle size={14} />;
-      case 'triangle': return <Triangle size={14} />;
-      case 'pentagon': return <Pentagon size={14} />;
-      case 'light': return <Lightbulb size={14} className="text-amber-400" />;
-      default: return <Box size={14} />;
-    }
   };
 
   const renderObjectItem = (item: Asset | PointLight, layerId: string) => {
@@ -252,7 +214,7 @@ export const ObjectList: React.FC = () => {
             onDragStart={(e) => onObjectDragStart(e, item.id, layerId)}
             onDragOver={(e) => onObjectDragOverItem(e, item.id, layerId)}
             onDragEnter={(e) => onObjectDragOverItem(e, item.id, layerId)}
-            onDragEnd={() => setDraggedItemId(null)}
+            onDragEnd={() => { setDraggedItemId(null); canDragRef.current = false; }}
             onDrop={(e) => onDropOnLayer(e, layerId)}
             onClick={(e) => { e.stopPropagation(); setSelectedAsset(item.id); }}
             className={clsx(
@@ -263,10 +225,14 @@ export const ObjectList: React.FC = () => {
                     : 'border-transparent text-muted hover:bg-black/20 hover:text-main'
             )}
         >
-            <div className={clsx(
-                "cursor-grab active:cursor-grabbing transition-colors drag-handle",
-                isLocked ? "opacity-0" : "text-muted/30 group-hover:text-muted"
-            )}>
+            <div 
+                onPointerDown={() => { canDragRef.current = true; }}
+                onPointerUp={() => { canDragRef.current = false; }}
+                className={clsx(
+                    "cursor-grab active:cursor-grabbing transition-colors drag-handle p-1 -m-1",
+                    isLocked ? "opacity-0" : "text-muted/30 group-hover:text-muted"
+                )}
+            >
                 <GripVertical size={10} />
             </div>
 
@@ -277,7 +243,9 @@ export const ObjectList: React.FC = () => {
                     <div className="w-5 h-5 rounded bg-black/40 border border-theme flex items-center justify-center overflow-hidden">
                         {customAsset?.previewUrl ? (
                             <img src={customAsset.previewUrl} className="w-full h-full object-contain" />
-                        ) : getAssetIcon((item as Asset).type)}
+                        ) : (
+                             <Box size={14} />
+                        )}
                     </div>
                 )}
             </div>
@@ -303,54 +271,22 @@ export const ObjectList: React.FC = () => {
                     </div>
                 ) : (
                     <div 
-                        onDoubleClick={(e) => startEditing(e, item.id, isLight ? ((item as PointLight).name || 'Point Light') : ((item as Asset).name || (item as Asset).type))}
+                        onDoubleClick={(e) => startEditing(e, item.id, isLight ? (item.name || 'Point Light') : ((item as Asset).name || (item as Asset).type))}
                         className="flex items-center gap-1 overflow-hidden"
                     >
                         <p className="text-[10px] font-bold truncate uppercase tracking-tight">
-                            {isLight 
-                                ? (item as PointLight).name || 'Point Light' 
-                                : ((item as Asset).name || (item as Asset).type)}
+                            {isLight ? item.name || 'Point Light' : ((item as Asset).name || (item as Asset).type)}
                         </p>
                     </div>
                 )}
             </div>
 
             <div className="flex items-center gap-1">
-                <button 
-                    onClick={(e) => startEditing(e, item.id, isLight ? ((item as PointLight).name || 'Point Light') : ((item as Asset).name || (item as Asset).type))}
-                    className="p-1 rounded hover:bg-black/40 text-muted hover:text-orange-500 transition-all"
-                    title="Rename"
-                >
-                    <Edit2 size={12} />
-                </button>
-                <button
-                    onClick={toggleVisibility}
-                    className={clsx("p-1 rounded hover:bg-black/40 transition-colors", !isVisible ? 'text-orange-500/50' : 'text-muted hover:text-main')}
-                    title={isVisible ? 'Hide Object' : 'Show Object'}
-                >
-                    {isVisible ? <Eye size={12} /> : <EyeOff size={12} />}
-                </button>
-                <button
-                    onClick={toggleLock}
-                    className={clsx("p-1 rounded hover:bg-black/40 transition-colors", isLocked ? 'text-orange-500' : 'text-muted hover:text-main')}
-                    title={isLocked ? 'Unlock Object' : 'Lock Object'}
-                >
-                    {isLocked ? <Lock size={12} /> : <Unlock size={12} />}
-                </button>
-                <button
-                    onClick={(e) => { e.stopPropagation(); duplicateObject(item.id); }}
-                    className="p-1 rounded hover:bg-black/40 text-muted hover:text-blue-400 transition-colors"
-                    title="Duplicate Object"
-                >
-                    <Copy size={12} />
-                </button>
-                <button
-                    onClick={(e) => { e.stopPropagation(); isLight ? removePointLight(item.id) : removeAsset(item.id); }}
-                    className="p-1 rounded hover:bg-red-900/40 text-muted hover:text-red-400 transition-colors"
-                    title="Delete Object"
-                >
-                    <Trash2 size={12} />
-                </button>
+                <button onClick={(e) => startEditing(e, item.id, isLight ? (item.name || 'Point Light') : ((item as Asset).name || (item as Asset).type))} className="p-1 rounded hover:bg-black/40 text-muted hover:text-orange-500 transition-all" title="Rename"><Edit2 size={12} /></button>
+                <button onClick={toggleVisibility} className={clsx("p-1 rounded hover:bg-black/40 transition-colors", !isVisible ? 'text-orange-500/50' : 'text-muted hover:text-main')} title={isVisible ? 'Hide' : 'Show'}>{isVisible ? <Eye size={12} /> : <EyeOff size={12} />}</button>
+                <button onClick={toggleLock} className={clsx("p-1 rounded hover:bg-black/40 transition-colors", isLocked ? 'text-orange-500' : 'text-muted hover:text-main')} title={isLocked ? 'Unlock' : 'Lock'}>{isLocked ? <Lock size={12} /> : <Unlock size={12} />}</button>
+                <button onClick={(e) => { e.stopPropagation(); duplicateObject(item.id); }} className="p-1 rounded hover:bg-black/40 text-muted hover:text-blue-400 transition-colors" title="Duplicate"><Copy size={12} /></button>
+                <button onClick={(e) => { e.stopPropagation(); isLight ? removePointLight(item.id) : removeAsset(item.id); }} className="p-1 rounded hover:bg-red-900/40 text-muted hover:text-red-400 transition-colors" title="Delete"><Trash2 size={12} /></button>
             </div>
         </div>
     );
@@ -360,170 +296,49 @@ export const ObjectList: React.FC = () => {
     <div className="flex flex-col h-full bg-panel">
       <div className="p-3 border-b border-theme flex justify-between items-center bg-black/10">
         <h3 className="text-[10px] font-bold text-muted uppercase tracking-wider flex items-center gap-2">
-          <Layers size={14} className="text-orange-500" />
-          Layer Tree
+          <Layers size={14} className="text-orange-500" /> Layer Tree
         </h3>
-        <div className="flex items-center gap-2">
-            {/* <span className="text-[10px] bg-black/20 text-muted px-1.5 py-0.5 rounded-full border border-theme">
-                {assets.length + pointLights.length}
-            </span> */}
-            <button
-                onClick={handleAddLayer}
-                className="p-1 hover:bg-black/20 rounded transition-colors text-orange-500"
-                title="Add New Layer"
-            >
-                <Plus size={14} />
-            </button>
-        </div>
+        <button onClick={handleAddLayer} className="p-1 hover:bg-black/20 rounded transition-colors text-orange-500" title="Add Layer"><Plus size={14} /></button>
       </div>
       
       <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
         <div className="flex flex-col">
             {[...layers].reverse().map(layer => {
-                const layerAssets = assets.filter(a => a.layerId === layer.id);
-                const layerLights = pointLights.filter(l => l.layerId === layer.id);
-                
-                // Visual Order: Higher zIndex at Top
-                const layerObjects = [...layerAssets, ...layerLights].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
-                
-                const isEmpty = layerObjects.length === 0;
+                const layerObjects = [...assets.filter(a => a.layerId === layer.id), ...pointLights.filter(l => l.layerId === layer.id)].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+                const visualOrderObjects = [...layerObjects].reverse();
                 const isCollapsed = collapsedLayers.has(layer.id);
-                const isFXOpen = showFXLayerId === layer.id;
                 const isDragOver = dragOverLayerId === layer.id;
-                const isWallLayer = layer.type === 'wall';
-                const isTerrainLayer = layer.type === 'terrain';
-                const isBackgroundLayer = layer.type === 'background';
+                const isStructural = layer.type === 'wall' || layer.type === 'terrain' || layer.id === 'background-layer';
 
                 return (
-                    <div 
-                        key={layer.id} 
-                        className={clsx(
-                            "flex flex-col border-b border-theme last:border-0 transition-all",
-                            draggedLayerId === layer.id ? "opacity-20" : "",
-                            isDragOver && "bg-orange-500/10 ring-1 ring-inset ring-orange-500/30"
-                        )}
-                        onDragOver={(e) => onDragOverLayer(e, layer.id)}
-                        onDragLeave={() => setDragOverLayerId(null)}
-                        onDrop={(e) => onDropOnLayer(e, layer.id)}
-                    >
-                        <div 
-                            draggable
-                            onDragStart={(e) => onLayerDragStart(e, layer.id)}
-                            onDragEnd={() => setDraggedLayerId(null)}
-                            onClick={() => { 
-                                setActiveLayer(layer.id); 
-                                if (isWallLayer) useEditorStore.getState().setActiveTool('wall');
-                                else if (isTerrainLayer) useEditorStore.getState().setActiveTool('terrain');
-                            }}
-                            className={clsx(
-                                "group flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors border-l-2",
-                                activeLayerId === layer.id 
-                                    ? "bg-orange-500/10 border-orange-500 text-main" 
-                                    : "border-transparent text-muted hover:bg-black/30"
-                            )}
-                            style={{ touchAction: 'none' }}
-                        >
-                            <div className="text-muted/50 cursor-grab active:cursor-grabbing">
-                                <GripVertical size={10} />
+                    <div key={layer.id} className={clsx("flex flex-col border-b border-theme last:border-0 transition-all", draggedLayerId === layer.id ? "opacity-20" : "", isDragOver && "bg-orange-500/10 ring-1 ring-inset ring-orange-500/30")} onDragOver={(e) => { e.preventDefault(); if (draggedItemId || draggedLayerId) setDragOverLayerId(layer.id); }} onDragLeave={() => setDragOverLayerId(null)} onDrop={(e) => onDropOnLayer(e, layer.id)}>
+                        <div draggable onDragStart={(e) => onLayerDragStart(e, layer.id)} onDragEnd={() => { setDraggedLayerId(null); canDragRef.current = false; }} onClick={() => { setActiveLayer(layer.id); if (layer.type === 'wall') useEditorStore.getState().setActiveTool('wall'); else if (layer.type === 'terrain') useEditorStore.getState().setActiveTool('terrain'); }} className={clsx("group flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors border-l-2", activeLayerId === layer.id ? "bg-orange-500/10 border-orange-500 text-main" : "border-transparent text-muted hover:bg-black/30")} style={{ touchAction: 'none' }}>
+                            <div onPointerDown={() => { canDragRef.current = true; }} onPointerUp={() => { canDragRef.current = false; }} className="text-muted/50 cursor-grab active:cursor-grabbing drag-handle p-1 -m-1"><GripVertical size={10} /></div>
+                            <div className="text-muted/50 hover:text-orange-500 transition-colors p-1 -m-1" onClick={(e) => { if (!isStructural) { e.stopPropagation(); toggleLayerCollapse(layer.id); } }}>
+                                {layer.type === 'wall' ? <Fence size={14} className="text-orange-500" /> : layer.type === 'terrain' ? <Paintbrush size={12} className="text-orange-500" /> : layer.id === 'background-layer' ? <Square size={12} className="text-orange-500" /> : (isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />)}
                             </div>
-                            <div 
-                                className="text-muted/50 hover:text-orange-500 transition-colors p-1 -m-1"
-                                onClick={(e) => {
-                                    if (!isWallLayer && !isTerrainLayer && !isBackgroundLayer) {
-                                        e.stopPropagation();
-                                        toggleLayerCollapse(layer.id);
-                                    }
-                                }}
-                            >
-                                {isWallLayer ? (
-                                    <Fence size={14} className="text-orange-500" />
-                                ) : isTerrainLayer ? (
-                                    <Paintbrush size={12} className="text-orange-500" />
-                                ) : isBackgroundLayer ? (
-                                    <Square size={12} className="text-orange-500" />
-                                ) : (
-                                    isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />
-                                )}
-                            </div>
-                            
                             <div className="flex-1 min-w-0">
                                 {editingLayerId === layer.id ? (
                                     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                                        <input
-                                            autoFocus type="text" value={editValue}
-                                            onChange={e => setEditValue(e.target.value)}
-                                            onKeyDown={e => {
-                                                if (e.key === 'Enter') saveLayerEdit(layer.id);
-                                                if (e.key === 'Escape') cancelEdit();
-                                            }}
-                                            className="bg-black/40 text-main text-[10px] px-1 py-0.5 rounded border border-orange-500 outline-none w-full font-bold uppercase"
-                                        />
-                                        <button onClick={() => saveLayerEdit(layer.id)} className="p-0.5 bg-orange-600 rounded text-white hover:bg-orange-500 transition-colors shrink-0">
-                                            <Check size={10} />
-                                        </button>
-                                        <button onClick={cancelEdit} className="p-0.5 bg-black/40 rounded text-muted hover:text-white transition-colors border border-theme shrink-0">
-                                            <X size={10} />
-                                        </button>
+                                        <input autoFocus type="text" value={editValue} onChange={e => setEditValue(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveLayerEdit(layer.id); if (e.key === 'Escape') cancelEdit(); }} className="bg-black/40 text-main text-[10px] px-1 py-0.5 rounded border border-orange-500 outline-none w-full font-bold uppercase" />
+                                        <button onClick={() => saveLayerEdit(layer.id)} className="p-0.5 bg-orange-600 rounded text-white hover:bg-orange-500 transition-colors shrink-0"><Check size={10} /></button>
+                                        <button onClick={cancelEdit} className="p-0.5 bg-black/40 rounded text-muted hover:text-white transition-colors border border-theme shrink-0"><X size={10} /></button>
                                     </div>
                                 ) : (
-                                    <div 
-                                        onDoubleClick={(e) => {
-                                            if (!isWallLayer && !isBackgroundLayer && !isTerrainLayer) {
-                                                startEditingLayer(e, layer);
-                                            }
-                                        }}
-                                        className="flex items-center gap-1 overflow-hidden"
-                                    >
-                                        <span className={clsx("text-[10px] font-black uppercase tracking-widest truncate", (isWallLayer || isBackgroundLayer || isTerrainLayer) && "text-main")}>{layer.name}</span>
-                                    </div>
+                                    <div onDoubleClick={(e) => { if (!isStructural) startEditingLayer(e, layer); }} className="flex items-center gap-1 overflow-hidden"><span className={clsx("text-[10px] font-black uppercase tracking-widest truncate", isStructural && "text-main")}>{layer.name}</span></div>
                                 )}
                             </div>
-
                             <div className="flex items-center gap-1">
-                                {!isWallLayer && !isBackgroundLayer && !isTerrainLayer && (
-                                    <button 
-                                        onClick={(e) => startEditingLayer(e, layer)}
-                                        className="p-1 rounded hover:bg-black/40 text-muted hover:text-orange-500 transition-all"
-                                        title="Rename Layer"
-                                    >
-                                        <Edit2 size={12} />
-                                    </button>
-                                )}
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { visible: !layer.visible }); }}
-                                    className={clsx("p-1 rounded transition-colors", !layer.visible ? 'text-orange-500/50' : 'text-muted hover:text-main')}
-                                    title={layer.visible ? 'Hide Layer' : 'Show Layer'}
-                                >
-                                    {layer.visible ? <Eye size={14} /> : <EyeOff size={14} />}
-                                </button>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { locked: !layer.locked }); }}
-                                    className={clsx("p-1 rounded transition-colors", layer.locked ? 'text-orange-500' : 'text-muted hover:text-main')}
-                                    title={layer.locked ? 'Unlock Layer' : 'Lock Layer'}
-                                >
-                                    {layer.locked ? <Lock size={14} /> : <Unlock size={14} />}
-                                </button>
-                                {layer.type !== 'background' && layer.type !== 'wall' && layer.type !== 'terrain' && (
-                                    <button
-                                        onClick={(e) => handleDeleteLayer(e, layer)}
-                                        className="p-1 hover:bg-red-500/20 text-muted hover:text-red-400 rounded transition-colors"
-                                        title="Delete Layer"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                )}
+                                {!isStructural && <button onClick={(e) => startEditingLayer(e, layer)} className="p-1 rounded hover:bg-black/40 text-muted hover:text-orange-500 transition-all" title="Rename"><Edit2 size={12} /></button>}
+                                <button onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { visible: !layer.visible }); }} className={clsx("p-1 rounded transition-colors", !layer.visible ? 'text-orange-500/50' : 'text-muted hover:text-main')} title={layer.visible ? 'Hide' : 'Show'}>{layer.visible ? <Eye size={14} /> : <EyeOff size={14} />}</button>
+                                <button onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { locked: !layer.locked }); }} className={clsx("p-1 rounded transition-colors", layer.locked ? 'text-orange-500' : 'text-muted hover:text-main')} title={layer.locked ? 'Unlock' : 'Lock'}>{layer.locked ? <Lock size={14} /> : <Unlock size={14} />}</button>
+                                {!isStructural && <button onClick={(e) => handleDeleteLayer(e, layer)} className="p-1 hover:bg-red-500/20 text-muted hover:text-red-400 rounded transition-colors" title="Delete"><Trash2 size={14} /></button>}
                             </div>
                         </div>
-
-                        {!isCollapsed && !isWallLayer && !isBackgroundLayer && !isTerrainLayer && (
+                        {!isCollapsed && !isStructural && (
                             <div className="flex flex-col bg-black/10 animate-in fade-in slide-in-from-top-1 duration-200 border-t border-theme/30 max-h-[420px] overflow-y-auto custom-scrollbar">
-                                {layerObjects.map(obj => renderObjectItem(obj, layer.id))}
-                                
-                                {isEmpty && (
-                                    <div className="py-3 px-8 opacity-20 italic">
-                                        <p className="text-[9px] uppercase font-bold tracking-tighter text-center">Empty Layer</p>
-                                    </div>
-                                )}
+                                {visualOrderObjects.map(obj => renderObjectItem(obj, layer.id))}
+                                {layerObjects.length === 0 && <div className="py-3 px-8 opacity-20 italic text-[9px] uppercase font-bold tracking-tighter text-center">Empty Layer</div>}
                             </div>
                         )}
                     </div>
