@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useProjectStore } from '../../store/useProjectStore';
 import { useMapStore } from '../../store/useMapStore';
 import { useNotificationStore } from '../../store/useNotificationStore';
 import { MapState } from '../../types/map';
 import { 
   Plus, Trash2, Copy, Map as MapIcon, 
-  Settings, ChevronUp, ChevronDown, GripVertical 
+  Settings, GripVertical, Check, X 
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { MapSettings } from './MapSettings';
@@ -13,85 +13,53 @@ import { MapSettings } from './MapSettings';
 export const LevelManager: React.FC = () => {
   const { maps, activeMapId, addMap, removeMap, setActiveMapId, reorderMaps, defaultGridType } = useProjectStore();
   const { showConfirm } = useNotificationStore();
+  
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [draggedId, setDraggedId] = useState<string | null>(null);
   const [openSettingsId, setOpenSettingsId] = useState<string | null>(null);
-  const [draggedMapId, setDraggedMapId] = useState<string | null>(null);
+
+  // High-performance drag validation
+  const canDragRef = useRef(false);
 
   const handleSelectMap = (mapId: string) => {
     if (mapId === activeMapId) return;
+    
+    // Save current map state before switching
+    const currentMap = useMapStore.getState();
+    useProjectStore.getState().saveMap(currentMap as any);
+    
     setActiveMapId(mapId);
+    const newMap = maps.find(m => m.id === mapId);
+    if (newMap) {
+        useMapStore.getState().resetState({ ...newMap, selectedAssetIds: [] } as any);
+    }
   };
 
   const handleAddMap = () => {
-    const newId = typeof crypto?.randomUUID === 'function' 
-        ? crypto.randomUUID() 
-        : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const id = crypto.randomUUID();
     const newMap: MapState = {
-      id: newId,
+      id,
       metadata: {
         name: `Level ${maps.length + 1}`,
         resolution: { width: 3500, height: 2400 },
         ratio: '1:1',
-        ppi: 70,
         backgroundColor: '#ffffff',
       },
       layers: [
-        {
-          id: 'background-layer',
-          name: 'Background',
-          type: 'background',
-          visible: true,
-          locked: false,
-          opacity: 1,
-          filters: { brightness: 0, contrast: 0, sepia: 0 },
-        },
-        {
-          id: 'terrain-layer',
-          name: 'Terrains',
-          type: 'terrain',
-          visible: true,
-          locked: false,
-          opacity: 1,
-          filters: { brightness: 0, contrast: 0, sepia: 0 },
-        },
-        {
-          id: 'stamp-layer',
-          name: 'Objects',
-          type: 'stamp',
-          visible: true,
-          locked: false,
-          opacity: 1,
-          filters: { brightness: 0, contrast: 0, sepia: 0 },
-        },
-        {
-          id: 'wall-layer',
-          name: 'Walls',
-          type: 'wall',
-          visible: true,
-          locked: false,
-          opacity: 1,
-          filters: { brightness: 0, contrast: 0, sepia: 0 },
-        }
+        { id: 'background-layer', name: 'Background', type: 'background', visible: true, locked: false, opacity: 1 },
+        { id: 'terrain-layer', name: 'Terrains', type: 'terrain', visible: true, locked: false, opacity: 1 },
+        { id: 'stamp-layer', name: 'Objects', type: 'stamp', visible: true, locked: false, opacity: 1 },
+        { id: 'wall-layer', name: 'Walls', type: 'wall', visible: true, locked: false, opacity: 1 }
       ],
       assets: [],
-      rooms: [],
       activeLayerId: 'stamp-layer',
-      selectedAssetIds: [],
-      selectedRoomId: null,
-      grid: {
-        type: defaultGridType || 'square',
-        size: 100,
-        visible: true,
-        snapToGrid: true,
-        color: '#666666',
-        opacity: 1,
-      },
-      lighting: {
-        global: { enabled: false, color: '#ffffff', intensity: 1, blendMode: 'multiply', sunEnabled: false, sunDirection: 45, sunIntensity: 0.5 },
-        pointLights: [],
-      },
-      walls: [],
+      grid: { type: defaultGridType || 'square', size: 100, visible: true, snapToGrid: true, color: '#666666', opacity: 1 },
+      lighting: { global: { enabled: false, color: '#ffffff', intensity: 1, sunEnabled: false, sunDirection: 45, sunIntensity: 0.5 }, pointLights: [] },
+      postProcessing: { vignette: 0, brightness: 100, contrast: 100, saturation: 100 },
       tiles: [],
       tilesets: [],
+      ghostFloorOpacity: 0.3
     };
     addMap(newMap);
   };
@@ -102,165 +70,129 @@ export const LevelManager: React.FC = () => {
     const duplicatedMap: MapState = {
       ...JSON.parse(JSON.stringify(map)),
       id: newId,
-      metadata: {
-        ...map.metadata,
-        name: `${map.metadata.name} (Copy)`,
-      },
+      metadata: { ...map.metadata, name: `${map.metadata.name} (Copy)` },
     };
     addMap(duplicatedMap);
-  };
-
-  const handleMoveMap = (e: React.MouseEvent, index: number, direction: 'up' | 'down') => {
-    e.stopPropagation();
-    const newMaps = [...maps];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= maps.length) return;
-    
-    const temp = newMaps[index];
-    newMaps[index] = newMaps[targetIndex];
-    newMaps[targetIndex] = temp;
-    
-    reorderMaps(newMaps.map(m => m.id));
-  };
-
-  const toggleSettings = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    setOpenSettingsId(openSettingsId === id ? null : id);
   };
 
   const handleDeleteLevel = (e: React.MouseEvent, map: MapState) => {
     e.stopPropagation();
     showConfirm(
         "Delete Level?",
-        `Are you sure you want to delete the level "${map.metadata.name}"? This cannot be undone.`,
+        `Are you sure you want to delete "${map.metadata.name}"? This cannot be undone.`,
         () => {
             const isActive = map.id === activeMapId;
             removeMap(map.id);
-            
-            // If the deleted map was active, the store already picked a new one.
-            // We need to make sure the MapStore is either cleared or updated.
             if (isActive) {
-                const nextActiveMapId = useProjectStore.getState().activeMapId;
-                const nextActiveMap = maps.find(m => m.id === nextActiveMapId);
-                
-                if (nextActiveMap) {
-                    useMapStore.getState().resetState({ ...nextActiveMap, selectedAssetIds: [] } as any);
-                } else {
-                    useMapStore.getState().resetState();
-                }
+                const nextId = useProjectStore.getState().activeMapId;
+                const nextMap = maps.find(m => m.id === nextId);
+                if (nextMap) useMapStore.getState().resetState({ ...nextMap, selectedAssetIds: [] } as any);
+                else useMapStore.getState().resetState();
             }
         },
         { type: 'error', confirmLabel: 'Delete' }
     );
   };
 
-  // Drag and Drop Handlers
+  const startRename = (e: React.MouseEvent, map: MapState) => {
+    e.stopPropagation();
+    setEditingId(map.id);
+    setEditName(map.metadata.name);
+  };
+
+  const saveRename = (id: string) => {
+    updateMap(id, { metadata: { ...maps.find(m => m.id === id)!.metadata, name: editName } });
+    setEditingId(null);
+  };
+
+  // Drag and Drop Logic (Right Sidebar Style)
   const onDragStart = (e: React.DragEvent, id: string) => {
-    setDraggedMapId(id);
+    if (!canDragRef.current) {
+        e.preventDefault();
+        return;
+    }
+    setDraggedId(id);
     e.dataTransfer.effectAllowed = 'move';
-    // Create a ghost image or just set data
-    e.dataTransfer.setData('text/plain', id);
+    e.dataTransfer.setData('levelId', id);
   };
 
   const onDragOver = (e: React.DragEvent, overId: string) => {
     e.preventDefault();
-    if (!draggedMapId || draggedMapId === overId) return;
+    e.stopPropagation();
+    if (!draggedId || draggedId === overId) return;
 
     const currentOrder = maps.map(m => m.id);
-    const draggedIdx = currentOrder.indexOf(draggedMapId);
+    const draggedIdx = currentOrder.indexOf(draggedId);
     const overIdx = currentOrder.indexOf(overId);
 
     if (draggedIdx === -1 || overIdx === -1) return;
 
     const newOrder = [...currentOrder];
     newOrder.splice(draggedIdx, 1);
-    newOrder.splice(overIdx, 0, draggedMapId);
+    newOrder.splice(overIdx, 0, draggedId);
 
     reorderMaps(newOrder);
   };
 
-  const onDragEnd = () => {
-    setDraggedMapId(null);
-  };
-
   return (
     <div className="flex flex-col h-full bg-panel">
-      <div className="p-4 flex items-center justify-between border-b border-theme bg-black/10">
+      <div className="p-4 border-b border-theme flex justify-between items-center bg-black/10">
         <h3 className="text-[10px] font-bold text-muted uppercase tracking-widest flex items-center gap-2">
-          <MapIcon size={14} />
-          Level Manager
+          <MapIcon size={14} className="text-orange-500" />
+          Levels
         </h3>
-        <button
-          onClick={handleAddMap}
-          className="p-1.5 bg-orange-600 hover:bg-orange-500 text-white rounded-md transition-colors shadow-lg shadow-orange-900/20"
-          title="Add New Level"
-        >
-          <Plus size={16} />
-        </button>
+        <button onClick={handleAddMap} className="p-1.5 bg-orange-600 hover:bg-orange-500 text-white rounded-lg shadow-lg"><Plus size={14} /></button>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2">
-        {maps.map((map, index) => (
+      <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
+        {maps.map((map) => (
           <div 
             key={map.id} 
-            className={clsx(
-                "flex flex-col gap-1 transition-all duration-200",
-                draggedMapId === map.id ? "opacity-30 scale-95" : "opacity-100"
-            )}
             draggable={openSettingsId === null}
             onDragStart={(e) => onDragStart(e, map.id)}
             onDragOver={(e) => onDragOver(e, map.id)}
-            onDragEnd={onDragEnd}
+            onDragEnter={(e) => onDragOver(e, map.id)}
+            onDragEnd={() => { setDraggedId(null); canDragRef.current = false; }}
+            onDrop={(e) => { e.preventDefault(); setDraggedId(null); canDragRef.current = false; }}
+            className={clsx(
+                "flex flex-col gap-1 transition-all duration-200",
+                draggedId === map.id ? "opacity-30 scale-95" : "opacity-100"
+            )}
           >
             <div
               onClick={() => handleSelectMap(map.id)}
               className={clsx(
                 "group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border",
-                activeMapId === map.id
-                  ? "bg-orange-500/10 border-orange-500 text-main shadow-lg shadow-orange-900/10"
-                  : "bg-black/20 border-theme text-muted hover:bg-black/40 hover:border-muted hover:text-main"
+                activeMapId === map.id ? "bg-orange-500/10 border-orange-500 text-main" : "bg-black/20 border-theme text-muted hover:bg-black/40"
               )}
             >
-              <div className="flex flex-col gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                <GripVertical size={14} className="text-muted cursor-grab active:cursor-grabbing" />
+              <div 
+                onPointerDown={() => { canDragRef.current = true; }}
+                onPointerUp={() => { canDragRef.current = false; }}
+                className="shrink-0 drag-handle p-1 -m-1"
+              >
+                <GripVertical size={14} className="text-muted/50 cursor-grab active:cursor-grabbing hover:text-orange-500" />
               </div>
 
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-bold truncate leading-tight uppercase tracking-tight">
-                  {map.metadata.name}
-                </p>
-                <p className="text-[9px] text-muted mt-0.5 truncate uppercase font-mono">
-                  {map.layers?.length || 0} Layers • {map.tiles?.length || 0} Tiles
-                </p>
+                {editingId === map.id ? (
+                  <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                    <input autoFocus type="text" value={editName} onChange={e => setEditName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveRename(map.id); if (e.key === 'Escape') setEditingId(null); }} className="bg-black/40 text-main text-xs px-2 py-1 rounded border border-orange-500 outline-none w-full font-bold" />
+                    <button onClick={() => saveRename(map.id)} className="p-1 bg-orange-600 rounded text-white"><Check size={12} /></button>
+                    <button onClick={() => setEditingId(null)} className="p-1 bg-black/40 rounded text-muted border border-theme"><X size={12} /></button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-widest truncate">{map.metadata.name}</span>
+                    <span className="text-[8px] font-mono text-muted uppercase">{map.metadata.resolution.width}x{map.metadata.resolution.height}</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-1">
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={(e) => toggleSettings(e, map.id)}
-                    className={clsx(
-                      "p-1.5 rounded transition-colors",
-                      openSettingsId === map.id ? "bg-orange-500 text-white" : "hover:bg-black/40 text-muted hover:text-orange-500"
-                    )}
-                    title="Level Settings"
-                  >
-                    <Settings size={14} />
-                  </button>
-                  <button
-                    onClick={(e) => handleDuplicateMap(e, map)}
-                    className="p-1.5 hover:bg-black/40 text-muted hover:text-blue-400 rounded transition-colors"
-                    title="Duplicate Level"
-                  >
-                    <Copy size={14} />
-                  </button>
-                  <button
-                    onClick={(e) => handleDeleteLevel(e, map)}
-                    className="p-1.5 hover:bg-black/40 text-muted hover:text-red-400 rounded transition-colors"
-                    title="Delete Level"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+                <button onClick={(e) => { e.stopPropagation(); setOpenSettingsId(openSettingsId === map.id ? null : map.id); }} className={clsx("p-1.5 rounded-lg transition-colors", openSettingsId === map.id ? "bg-orange-500 text-white" : "text-muted/50 hover:text-orange-500 hover:bg-black/20")} title="Settings"><Settings size={14} /></button>
+                <button onClick={(e) => handleDuplicateMap(e, map)} className="p-1.5 rounded-lg text-muted/50 hover:text-blue-400 hover:bg-black/20" title="Duplicate"><Copy size={14} /></button>
+                {maps.length > 1 && <button onClick={(e) => handleDeleteLevel(e, map)} className="p-1.5 rounded-lg text-muted/50 hover:text-red-400 hover:bg-black/20" title="Delete"><Trash2 size={14} /></button>}
               </div>
             </div>
             
@@ -270,10 +202,7 @@ export const LevelManager: React.FC = () => {
                     map={map} 
                     isActive={activeMapId === map.id}
                     onUpdate={(id, updates) => {
-                        const { updateMap } = useProjectStore.getState();
                         updateMap(id, updates);
-                        
-                        // If we are updating the active map, sync with MapStore
                         if (id === activeMapId) {
                             if (updates.metadata) useMapStore.getState().updateMetadata(updates.metadata);
                             if (updates.grid) useMapStore.getState().updateGrid(updates.grid);
