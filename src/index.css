@@ -39,35 +39,40 @@ html {
   overflow: hidden;
 }
 
-/* Universal Scrollbar - Visible in all browsers, optimized for touch */
+/* Universal Scrollbar - Force permanent visibility on all devices */
 * {
-    scrollbar-width: auto;
-    scrollbar-color: var(--border) transparent;
+    scrollbar-width: auto !important; /* Firefox */
+    scrollbar-color: var(--border) rgba(0, 0, 0, 0.1) !important; /* Firefox */
 }
 
-/* Webkit (Chrome, Edge, Safari, Brave) */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 14px;
-  height: 14px;
-  display: block;
+/* Webkit (Chrome, Edge, Safari, Brave, iOS, Android) */
+.custom-scrollbar::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 14px !important;
+  height: 14px !important;
+  display: block !important;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+.custom-scrollbar::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2) !important;
+  border-radius: 4px !important;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 10px;
-  border: 3px solid var(--bg-panel);
+.custom-scrollbar::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  background: var(--border) !important;
+  border-radius: 10px !important;
+  border: 3px solid #0f172a !important; /* Context border to match panel bg */
+  min-height: 40px !important;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted) !important;
 }
 
-/* Theme utility classes */
+/* Theme utility classes - RESTORED */
 .bg-editor { background-color: var(--bg-editor); }
 .bg-panel { background-color: var(--bg-panel); }
 .bg-sidebar { background-color: var(--bg-sidebar); }
@@ -89,7 +94,7 @@ html {
   animation: scroll-text var(--scroll-duration, 8s) ease-in-out infinite alternate;
 }
 
-/* Drag and Drop Ghost Styles - Max Performance */
+/* Drag and Drop Ghost Styles - Max Performance - RESTORED */
 .dnd-poly-drag-image {
     opacity: 0.7 !important;
     pointer-events: none !important;
@@ -106,7 +111,12 @@ html {
 
 /* Force native touch behavior facilitation */
 .custom-scrollbar {
-    overflow-y: auto !important;
+    overflow-y: scroll !important;
     -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
     touch-action: pan-y pinch-zoom;
+}
+
+.custom-scrollbar * {
+    user-select: none;
 }
