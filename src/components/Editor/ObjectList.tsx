@@ -12,7 +12,10 @@ import {
 import { Asset, PointLight, Layer } from '../../types/map';
 import { clsx } from 'clsx';
 
+import { useTwoFingerScroll } from '../../hooks/useTwoFingerScroll';
+
 export const ObjectList: React.FC = () => {
+  const scrollRef = useTwoFingerScroll();
   const activeMapId = useProjectStore((state) => state.activeMapId);
   const assets = useMapStore((state) => state.assets);
   const pointLights = useMapStore((state) => state.lighting.pointLights);

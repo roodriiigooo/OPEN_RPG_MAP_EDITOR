@@ -6,7 +6,7 @@ import 'mobile-drag-drop/default.css';
 
 // Initialize touch drag and drop polyfill
 polyfill({
-    holdToDrag: 300, // Hold for 300ms to start dragging, allowing normal scrolling
+    holdToDrag: 100, // Faster detection for drag
     dragImageTranslateOverride: (event, hoverElement, translatedEvent) => {
         if (translatedEvent) {
             translatedEvent.clientX = event.clientX;
