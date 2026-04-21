@@ -7,7 +7,7 @@ import {
     ZoomIn, Palette, Keyboard, Pipette, Maximize2, Minimize2,
     Cloud, CloudUpload, CloudOff, AlertCircle, Map as MapIcon,
     X, MousePointer2, ChevronUp, Focus, Plus, Minus, Columns2,
-    PanelLeftClose
+    PanelLeftClose, Type
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -439,6 +439,28 @@ export const EditorFooter: React.FC = () => {
                                       <div className="p-1.5 bg-black/20 rounded border border-theme mt-0.5 shrink-0 text-[8px] font-black font-mono">SCRL</div>
                                       <p className="text-[10px] text-muted font-bold uppercase leading-relaxed">
                                           <span className="text-main">Mouse Wheel:</span> Zoom in and out of the map.
+                                      </p>
+                                  </div>
+                              </div>
+                          </section>
+
+                          <section className="space-y-3">
+                              <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-400 border-b border-indigo-400/20 pb-2">Touch & Stylus</h3>
+                              <div className="grid grid-cols-1 gap-3">
+                                  <div className="flex gap-3 items-start text-indigo-400">
+                                      <div className="p-1.5 bg-black/20 rounded border border-theme mt-0.5 shrink-0">
+                                          <Maximize2 size={12} />
+                                      </div>
+                                      <p className="text-[10px] text-muted font-bold uppercase leading-relaxed">
+                                          <span className="text-main">1-Finger Touch:</span> Select, drag objects, or pan with Hand Tool.
+                                      </p>
+                                  </div>
+                                  <div className="flex gap-3 items-start text-indigo-400">
+                                      <div className="p-1.5 bg-black/20 rounded border border-theme mt-0.5 shrink-0">
+                                          <Type size={12} />
+                                      </div>
+                                      <p className="text-[10px] text-muted font-bold uppercase leading-relaxed">
+                                          <span className="text-main">Pen Support:</span> High-precision input optimized for active stylus devices.
                                       </p>
                                   </div>
                               </div>
