@@ -58,6 +58,7 @@ interface MapStoreActions {
   cleanupAssetUsage: (assetId: string) => void;
   cleanupFontUsage: (fontFamily: string) => void;
   setGhostFloor: (id: string | null, opacity?: number) => void;
+  updateExportMasks: (masks: Partial<NonNullable<ExtendedMapState['exportMasks']>>) => void;
   resetState: (newState?: ExtendedMapState) => void;
 }
 
@@ -531,6 +532,12 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
             })
         })),
         setGhostFloor: (id, opacity) => set((state) => ({ ghostFloorId: id, ghostFloorOpacity: opacity ?? state.ghostFloorOpacity })),
+        updateExportMasks: (masks) => set((state) => ({
+            exportMasks: {
+                lines: masks.lines ?? state.exportMasks?.lines ?? [],
+                inverted: masks.inverted ?? state.exportMasks?.inverted ?? false
+            }
+        })),
         resetState: (newState) => set((state) => {
             if (newState) return newState;
             

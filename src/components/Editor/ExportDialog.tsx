@@ -7,12 +7,11 @@ import { exportToImage } from '../../utils/export/imageExport';
 import { 
     X, Download, FileImage, FileText, 
     Paintbrush, Eraser, Eye, EyeOff, Maximize2, Settings2,
-    CheckCircle2, Info, Grid as GridIcon, Hand, MousePointer2,
+    CheckCircle2, Info, LayoutGrid, Hand,
     Plus, Minus, RotateCcw, FlipHorizontal
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import useImage from 'use-image';
-import { axialToPixel } from '../../utils/terrain/hex';
 import { TilingRenderer } from './TilingRenderer';
 import { GlobalOverlay } from './Lighting/GlobalOverlay';
 import { AtmosphereOverlay } from './Lighting/AtmosphereOverlay';
@@ -94,8 +93,10 @@ export const ExportDialog: React.FC = () => {
   const getRelativePointerPosition = useCallback(() => {
       const stage = previewStageRef.current;
       if (!stage) return { x: 0, y: 0 };
+      const pointer = stage.getPointerPosition();
+      if (!pointer) return { x: 0, y: 0 };
       const transform = stage.getAbsoluteTransform().copy().invert();
-      return transform.point(stage.getPointerPosition() || { x: 0, y: 0 });
+      return transform.point(pointer);
   }, []);
 
   const centerPreview = useCallback(() => {
@@ -121,9 +122,15 @@ export const ExportDialog: React.FC = () => {
   useEffect(() => { centerPreview(); }, [centerPreview]);
 
   const handleMouseDown = useCallback((e: any) => {
-      if (e.evt.button === 1 || (!isMaskToolActive && e.evt.button === 0)) {
+      const isTouch = !!e.evt.touches;
+      const isMiddle = e.evt.button === 1;
+      const isLeft = e.evt.button === 0;
+
+      if (isMiddle || (!isMaskToolActive && (isLeft || isTouch))) {
           isMiddlePanning.current = true;
-          lastMousePos.current = { x: e.evt.clientX, y: e.evt.clientY };
+          const clientX = isTouch ? e.evt.touches[0].clientX : e.evt.clientX;
+          const clientY = isTouch ? e.evt.touches[0].clientY : e.evt.clientY;
+          lastMousePos.current = { x: clientX, y: clientY };
           if (previewStageRef.current) previewStageRef.current.container().style.cursor = 'grabbing';
           return;
       }
@@ -135,11 +142,15 @@ export const ExportDialog: React.FC = () => {
   }, [isMaskToolActive, getRelativePointerPosition]);
 
   const handleMouseMove = useCallback((e: any) => {
+      const isTouch = !!e.evt.touches;
+      const clientX = isTouch ? e.evt.touches[0].clientX : e.evt.clientX;
+      const clientY = isTouch ? e.evt.touches[0].clientY : e.evt.clientY;
+
       if (isMiddlePanning.current) {
-          const dx = e.evt.clientX - lastMousePos.current.x;
-          const dy = e.evt.clientY - lastMousePos.current.y;
+          const dx = clientX - lastMousePos.current.x;
+          const dy = clientY - lastMousePos.current.y;
           setPreviewPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
-          lastMousePos.current = { x: e.evt.clientX, y: e.evt.clientY };
+          lastMousePos.current = { x: clientX, y: clientY };
           return;
       }
       const pos = getRelativePointerPosition();
@@ -169,6 +180,13 @@ export const ExportDialog: React.FC = () => {
       isMiddlePanning.current = false;
       if (previewStageRef.current) previewStageRef.current.container().style.cursor = isMaskToolActive ? 'none' : 'default';
   }, [isMaskToolActive, activePoints, maskBrushSize, maskMode, maskLines, updateExportMasks]);
+
+  const handleTouchStart = (e: any) => handleMouseDown(e);
+  const handleTouchMove = (e: any) => {
+      if (isMaskToolActive || isMiddlePanning.current) e.evt.preventDefault();
+      handleMouseMove(e);
+  };
+  const handleTouchEnd = () => handleMouseUp();
 
   const handleWheel = useCallback((e: any) => {
       e.evt.preventDefault();
@@ -264,7 +282,7 @@ export const ExportDialog: React.FC = () => {
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-orange-500 flex items-center gap-2"><Maximize2 size={14} />Preview Settings</h3>
                     <div className="grid grid-cols-1 gap-2">
                         <button onClick={() => setLocalGridVisible(!localGridVisible)} className={clsx("flex items-center justify-between p-4 rounded-2xl border-2 transition-all group", localGridVisible ? "bg-orange-600/10 border-orange-500 text-orange-500" : "bg-black/20 border-theme text-muted hover:border-muted")}>
-                            <div className="flex items-center gap-3"><GridIcon size={18} /><span className="text-xs font-bold uppercase tracking-tight">Enable Grid</span></div>
+                            <div className="flex items-center gap-3"><LayoutGrid size={18} /><span className="text-xs font-bold uppercase tracking-tight">Enable Grid</span></div>
                             {localGridVisible && <CheckCircle2 size={14} />}
                         </button>
                         <button onClick={() => setShowBackground(!showBackground)} className={clsx("flex items-center justify-between p-4 rounded-2xl border-2 transition-all group", showBackground ? "bg-orange-600/10 border-orange-500 text-orange-500" : "bg-black/20 border-theme text-muted hover:border-muted")}>
@@ -312,6 +330,7 @@ export const ExportDialog: React.FC = () => {
                 ref={previewStageRef} width={dimensions.width} height={dimensions.height} 
                 scaleX={previewZoom} scaleY={previewZoom} x={previewPos.x} y={previewPos.y} 
                 onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onWheel={handleWheel} 
+                onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
                 onMouseEnter={() => setIsMouseOverStage(true)}
                 onMouseLeave={() => {
                     setIsMouseOverStage(false);

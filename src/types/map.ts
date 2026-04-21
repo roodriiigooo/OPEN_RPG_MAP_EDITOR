@@ -50,6 +50,12 @@ export interface PostProcessing {
   saturation: number;
 }
 
+export interface ExportMaskLine {
+  points: number[];
+  size: number;
+  mode: 'paint' | 'erase';
+}
+
 export interface MapLayer {
   id: string;
   name: string;
@@ -122,6 +128,10 @@ export interface MapState {
   };
   postProcessing: PostProcessing;
   activeLayerId: string;
+  exportMasks?: {
+    lines: ExportMaskLine[];
+    inverted: boolean;
+  };
   ghostFloorId?: string;
   ghostFloorOpacity: number;
   favorite?: boolean;
