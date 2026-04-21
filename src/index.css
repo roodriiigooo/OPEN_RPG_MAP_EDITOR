@@ -39,10 +39,10 @@ html {
   overflow: hidden;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar - RESTORED THEME with 14px size */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 14px;
+  height: 14px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -95,13 +95,8 @@ html {
     opacity: 0.4;
 }
 
-/* Touch optimization for panels */
+/* Restoring native touch behavior with custom scrollbar facilitation */
 .custom-scrollbar {
-    touch-action: none; /* Disable browser scroll, use our 2-finger hook */
     -webkit-overflow-scrolling: touch;
-}
-
-.custom-scrollbar * {
-    user-select: none;
-    -webkit-user-drag: none;
+    touch-action: pan-y pinch-zoom;
 }

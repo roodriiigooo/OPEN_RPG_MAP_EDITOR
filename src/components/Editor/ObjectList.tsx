@@ -12,10 +12,7 @@ import {
 import { Asset, PointLight, Layer } from '../../types/map';
 import { clsx } from 'clsx';
 
-import { useTwoFingerScroll } from '../../hooks/useTwoFingerScroll';
-
 export const ObjectList: React.FC = () => {
-  const scrollRef = useTwoFingerScroll();
   const activeMapId = useProjectStore((state) => state.activeMapId);
   const assets = useMapStore((state) => state.assets);
   const pointLights = useMapStore((state) => state.lighting.pointLights);
@@ -377,7 +374,7 @@ export const ObjectList: React.FC = () => {
         </div>
       </div>
       
-      <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
         <div className="flex flex-col">
             {[...layers].reverse().map(layer => {
                 const layerAssets = assets.filter(a => a.layerId === layer.id);
