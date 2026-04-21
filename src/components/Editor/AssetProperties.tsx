@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Asset } from '../../types/map';
 import clsx from 'clsx';
+import { FontLibrarySelector } from './FontLibrarySelector';
 
 export const AssetProperties: React.FC = () => {
   const assets = useMapStore(s => s.assets);
@@ -332,6 +333,13 @@ export const AssetProperties: React.FC = () => {
                         >
                             <AlignRight size={12} />
                         </button>
+                    </div>
+
+                    <div className="pt-2">
+                        <FontLibrarySelector 
+                            currentFont={selectedAsset.properties?.fontFamily || 'Arial'}
+                            onSelect={(font) => handlePropertyChange('fontFamily', font)}
+                        />
                     </div>
                 </div>
             </div>
