@@ -262,10 +262,9 @@ export const ObjectList: React.FC = () => {
                     ? 'bg-orange-500/10 border-orange-500 text-main shadow-inner' 
                     : 'border-transparent text-muted hover:bg-black/20 hover:text-main'
             )}
-            style={{ touchAction: 'none' }}
         >
             <div className={clsx(
-                "cursor-grab active:cursor-grabbing transition-colors",
+                "cursor-grab active:cursor-grabbing transition-colors drag-handle",
                 isLocked ? "opacity-0" : "text-muted/30 group-hover:text-muted"
             )}>
                 <GripVertical size={10} />

@@ -874,7 +874,6 @@ export const AssetCatalog: React.FC<AssetCatalogProps> = ({ mode = 'library' }) 
                                 "group flex flex-col items-center justify-center p-4 rounded-xl bg-black/20 hover:bg-black/40 transition-all border border-theme hover:border-orange-500/50 aspect-square drag-handle",
                                 (mode === 'stamp' || mode === 'library') ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
                             )}
-                            style={{ touchAction: 'none' }}
                             >
                             <div className="text-muted group-hover:text-orange-500 mb-3 transition-colors scale-125 group-hover:scale-150 duration-300 pointer-events-none">
                                 {stamp.icon}
