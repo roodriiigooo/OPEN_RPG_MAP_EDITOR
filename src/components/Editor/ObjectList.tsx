@@ -378,7 +378,7 @@ export const ObjectList: React.FC = () => {
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
         <div className="flex flex-col">
             {[...layers].reverse().map(layer => {
                 const layerAssets = assets.filter(a => a.layerId === layer.id);

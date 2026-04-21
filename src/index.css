@@ -94,3 +94,14 @@ html {
 .drag-handle:active {
     opacity: 0.4;
 }
+
+/* Touch optimization for panels */
+.custom-scrollbar {
+    touch-action: none; /* Disable browser scroll, use our 2-finger hook */
+    -webkit-overflow-scrolling: touch;
+}
+
+.custom-scrollbar * {
+    user-select: none;
+    -webkit-user-drag: none;
+}

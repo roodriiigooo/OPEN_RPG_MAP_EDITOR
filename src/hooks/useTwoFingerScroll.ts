@@ -15,15 +15,14 @@ export const useTwoFingerScroll = (enabled: boolean = true) => {
                 
                 if (lastTouchY.current !== null) {
                     const deltaY = lastTouchY.current - touchY;
-                    el.scrollTop += deltaY;
+                    // Apply scroll directly
+                    el.scrollTop += deltaY * 1.5; // Added multiplier for better speed
                 }
                 
                 lastTouchY.current = touchY;
                 
-                // Prevent default scrolling and zooming
                 if (e.cancelable) e.preventDefault();
-            } else if (e.touches.length === 1) {
-                // Reset on single touch
+            } else {
                 lastTouchY.current = null;
             }
         };

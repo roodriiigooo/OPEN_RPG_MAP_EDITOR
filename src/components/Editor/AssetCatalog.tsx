@@ -58,11 +58,14 @@ const Section: React.FC<{
   </div>
 );
 
+import { useTwoFingerScroll } from '../../hooks/useTwoFingerScroll';
+
 interface AssetCatalogProps {
     mode?: 'library' | 'stamp' | 'terrain' | 'wall' | 'room-terrain' | 'room-wall';
 }
 
 export const AssetCatalog: React.FC<AssetCatalogProps> = ({ mode = 'library' }) => {
+  const scrollRef = useTwoFingerScroll();
   const { 
     customAssets, loadAssets, removeAsset, categories, setCategories,
     remoteCatalogs, downloadRemoteAsset, isLoadingRemote,
@@ -830,7 +833,7 @@ export const AssetCatalog: React.FC<AssetCatalogProps> = ({ mode = 'library' }) 
           </div>
       ) : (
           <>
-            <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/5">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto custom-scrollbar bg-black/5">
                 {favoriteAssets.length > 0 && (
                     <Section title="Favorites" icon={<Star size={14} fill="currentColor" />}>
                         <div className="grid grid-cols-5 gap-2">
