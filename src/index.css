@@ -39,26 +39,35 @@ html {
   overflow: hidden;
 }
 
-/* Custom scrollbar - RESTORED THEME with 14px size */
+/* Universal Scrollbar - Visible in all browsers, optimized for touch */
+* {
+    scrollbar-width: auto;
+    scrollbar-color: var(--border) transparent;
+}
+
+/* Webkit (Chrome, Edge, Safari, Brave) */
 .custom-scrollbar::-webkit-scrollbar {
   width: 14px;
   height: 14px;
+  display: block;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 10px;
+  border: 3px solid var(--bg-panel);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
 
-/* Theme overrides for standard components if needed */
+/* Theme utility classes */
 .bg-editor { background-color: var(--bg-editor); }
 .bg-panel { background-color: var(--bg-panel); }
 .bg-sidebar { background-color: var(--bg-sidebar); }
@@ -95,8 +104,9 @@ html {
     opacity: 0.4;
 }
 
-/* Restoring native touch behavior with custom scrollbar facilitation */
+/* Force native touch behavior facilitation */
 .custom-scrollbar {
+    overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y pinch-zoom;
 }

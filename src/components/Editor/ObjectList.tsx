@@ -250,7 +250,9 @@ export const ObjectList: React.FC = () => {
             draggable={!isLocked}
             onDragStart={(e) => onObjectDragStart(e, item.id, layerId)}
             onDragOver={(e) => onObjectDragOverItem(e, item.id, layerId)}
+            onDragEnter={(e) => onObjectDragOverItem(e, item.id, layerId)}
             onDragEnd={() => setDraggedItemId(null)}
+            onDrop={(e) => onDropOnLayer(e, layerId)}
             onClick={(e) => { e.stopPropagation(); setSelectedAsset(item.id); }}
             className={clsx(
                 "group flex items-center gap-2 px-2 py-1.5 cursor-pointer border-l-2 transition-all ml-4",
