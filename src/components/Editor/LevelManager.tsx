@@ -11,7 +11,7 @@ import { clsx } from 'clsx';
 import { MapSettings } from './MapSettings';
 
 export const LevelManager: React.FC = () => {
-  const { maps, activeMapId, addMap, removeMap, setActiveMapId, reorderMaps, defaultGridType } = useProjectStore();
+  const { maps, activeMapId, addMap, removeMap, setActiveMapId, reorderMaps, defaultGridType, updateMap } = useProjectStore();
   const { showConfirm } = useNotificationStore();
   
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -59,7 +59,8 @@ export const LevelManager: React.FC = () => {
       postProcessing: { vignette: 0, brightness: 100, contrast: 100, saturation: 100 },
       tiles: [],
       tilesets: [],
-      ghostFloorOpacity: 0.3
+      ghostFloorOpacity: 0.3,
+      diagonalTiling: false
     };
     addMap(newMap);
   };
@@ -206,6 +207,7 @@ export const LevelManager: React.FC = () => {
                         if (id === activeMapId) {
                             if (updates.metadata) useMapStore.getState().updateMetadata(updates.metadata);
                             if (updates.grid) useMapStore.getState().updateGrid(updates.grid);
+                            if (updates.diagonalTiling !== undefined) useMapStore.getState().setDiagonalTiling(updates.diagonalTiling);
                         }
                     }}
                 />

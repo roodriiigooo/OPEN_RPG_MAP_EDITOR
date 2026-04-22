@@ -128,6 +128,7 @@ export interface MapState {
   };
   postProcessing: PostProcessing;
   activeLayerId: string;
+  diagonalTiling?: boolean;
   exportMasks?: {
     lines: ExportMaskLine[];
     inverted: boolean;

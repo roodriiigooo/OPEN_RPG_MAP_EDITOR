@@ -92,10 +92,13 @@ export const useProjectStore = create<ProjectStore>((set) => ({
     }),
 
   updateMap: (mapId, updates) =>
-    set((state) => ({
-      maps: state.maps.map((m) => (m.id === mapId ? { ...m, ...updates } : m)),
-      saveStatus: 'unsaved',
-    })),
+    set((state) => {
+      console.log(`[ProjectStore] Updating map ${mapId} with:`, updates);
+      return {
+        maps: state.maps.map((m) => (m.id === mapId ? { ...m, ...updates } : m)),
+        saveStatus: 'unsaved',
+      };
+    }),
 
   saveMap: (mapState) =>
     set((state) => {

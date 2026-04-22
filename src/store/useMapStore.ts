@@ -58,6 +58,7 @@ interface MapStoreActions {
   cleanupAssetUsage: (assetId: string) => void;
   cleanupFontUsage: (fontFamily: string) => void;
   setGhostFloor: (id: string | null, opacity?: number) => void;
+  setDiagonalTiling: (enabled: boolean) => void;
   updateExportMasks: (masks: Partial<NonNullable<ExtendedMapState['exportMasks']>>) => void;
   resetState: (newState?: ExtendedMapState) => void;
 }
@@ -77,6 +78,7 @@ const initialState: ExtendedMapState = {
   selectedAssetIds: [],
   ghostFloorId: null,
   ghostFloorOpacity: 0.3,
+  diagonalTiling: false,
   grid: { type: 'square', size: 100, visible: true, snapToGrid: true, color: '#666666', opacity: 1 },
   lastTileUpdate: Date.now(),
   lighting: { 
@@ -248,18 +250,18 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
                   if (tile.x === cx && tile.y === cy && tile.layerId === layerId && tile.tilesetId === newTile.tilesetId) {
                       const rawMask = isHex 
                           ? calculateHexBitmask(cx, cy, tile.tilesetId, (nq, nr, setId) => nextTiles.some(t => t.x === nq && t.y === nr && t.tilesetId === setId && t.layerId === layerId))
-                          : calculateBitmask(cx, cy, tile.tilesetId, (nx, ny, setId) => nextTiles.some(t => t.x === nx && t.y === ny && t.tilesetId === setId && t.layerId === layerId));
+                          : calculateBitmask(cx, cy, tile.tilesetId, (nx, ny, setId) => nextTiles.some(t => t.x === nx && t.y === ny && t.tilesetId === setId && t.layerId === layerId), state.diagonalTiling);
                       
-                      const mask = isHex ? rawMask : getMinimalMask(rawMask);
+                      const mask = isHex ? rawMask : getMinimalMask(rawMask, state.diagonalTiling);
                       const tileset = state.tilesets.find(ts => ts.id === tile.tilesetId);
                       const isBlobSet = (tileset as any)?.bitmaskMap?.isBlobSet;
 
                       if (isBlobSet) {
                           nextTiles[idx] = { ...tile, bitmask: mask, variantIndex: BLOB_MAP[mask] ?? 0, quadrants: undefined };
                       } else if (!isHex) {
-                          nextTiles[idx] = { ...tile, bitmask: mask, quadrants: calculateTerrainQuadrants(mask), variantIndex: 0 };
+                          nextTiles[idx] = { ...tile, bitmask: mask, quadrants: calculateTerrainQuadrants(mask, state.diagonalTiling), variantIndex: 0 };
                       } else {
-                          nextTiles[idx] = { ...tile, bitmask: mask, variantIndex: tileset ? getBestTileVariant(mask, tileset.bitmaskMap) : 0 };
+                          nextTiles[idx] = { ...tile, bitmask: mask, variantIndex: tileset ? getBestTileVariant(mask, tileset.bitmaskMap, state.diagonalTiling) : 0 };
                       }
                   }
               });
@@ -323,7 +325,7 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
             });
             worker.terminate();
           };
-          worker.postMessage({ tiles: nextTiles, affectedKeys: Array.from(affectedSet), tilesets: state.tilesets, isHex });
+          worker.postMessage({ tiles: nextTiles, affectedKeys: Array.from(affectedSet), tilesets: state.tilesets, isHex, diagonalTiling: state.diagonalTiling });
         },
 
         bulkUpdateTiles: (toAdd, toRemove) => {
@@ -384,7 +386,7 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
             });
             worker.terminate();
           };
-          worker.postMessage({ tiles: nextTiles, affectedKeys: Array.from(affectedSet), tilesets: state.tilesets, isHex });
+          worker.postMessage({ tiles: nextTiles, affectedKeys: Array.from(affectedSet), tilesets: state.tilesets, isHex, diagonalTiling: state.diagonalTiling });
         },
 
         removeTile: (x, y, type) => {
@@ -411,18 +413,18 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
                   if (tile.x === cx && tile.y === cy && tile.layerId === layerId && tile.tilesetId === removedTile.tilesetId) {
                       const rawMask = isHex 
                           ? calculateHexBitmask(cx, cy, tile.tilesetId, (nq, nr, setId) => nextTiles.some(t => t.x === nq && t.y === nr && t.tilesetId === setId && t.layerId === layerId))
-                          : calculateBitmask(cx, cy, tile.tilesetId, (nx, ny, setId) => nextTiles.some(t => t.x === nx && t.y === ny && t.tilesetId === setId && t.layerId === layerId));
+                          : calculateBitmask(cx, cy, tile.tilesetId, (nx, ny, setId) => nextTiles.some(t => t.x === nx && t.y === ny && t.tilesetId === setId && t.layerId === layerId), state.diagonalTiling);
                       
-                      const mask = isHex ? rawMask : getMinimalMask(rawMask);
+                      const mask = isHex ? rawMask : getMinimalMask(rawMask, state.diagonalTiling);
                       const tileset = state.tilesets.find(ts => ts.id === tile.tilesetId);
                       const isBlobSet = (tileset as any)?.bitmaskMap?.isBlobSet;
 
                       if (isBlobSet) {
                           nextTiles[idx] = { ...tile, bitmask: mask, variantIndex: BLOB_MAP[mask] ?? 0, quadrants: undefined };
                       } else if (!isHex) {
-                          nextTiles[idx] = { ...tile, bitmask: mask, quadrants: calculateTerrainQuadrants(mask), variantIndex: 0 };
+                          nextTiles[idx] = { ...tile, bitmask: mask, quadrants: calculateTerrainQuadrants(mask, state.diagonalTiling), variantIndex: 0 };
                       } else {
-                          nextTiles[idx] = { ...tile, bitmask: mask, variantIndex: tileset ? getBestTileVariant(mask, tileset.bitmaskMap) : 0 };
+                          nextTiles[idx] = { ...tile, bitmask: mask, variantIndex: tileset ? getBestTileVariant(mask, tileset.bitmaskMap, state.diagonalTiling) : 0 };
                       }
                   }
               });
@@ -465,7 +467,7 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
             });
             worker.terminate();
           };
-          worker.postMessage({ tiles: nextTiles, affectedKeys: Array.from(affectedSet), tilesets: state.tilesets, isHex });
+          worker.postMessage({ tiles: nextTiles, affectedKeys: Array.from(affectedSet), tilesets: state.tilesets, isHex, diagonalTiling: state.diagonalTiling });
         },
 
         updateAutoTilingAround: (x, y, type) => {
@@ -491,18 +493,18 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
                   if (tile.x === cx && tile.y === cy && tile.type === type && tile.layerId === layerId && tile.tilesetId === baseTile.tilesetId) {
                       const rawMask = isHex 
                           ? calculateHexBitmask(cx, cy, tile.tilesetId, (nq, nr, setId) => newTiles.some(t => t.x === nq && t.y === nr && t.tilesetId === setId && t.layerId === layerId))
-                          : calculateBitmask(cx, cy, tile.tilesetId, (nx, ny, setId) => newTiles.some(t => t.x === nx && t.y === ny && t.tilesetId === setId && t.layerId === layerId));
+                          : calculateBitmask(cx, cy, tile.tilesetId, (nx, ny, setId) => newTiles.some(t => t.x === nx && t.y === ny && t.tilesetId === setId && t.layerId === layerId), state.diagonalTiling);
                       
-                      const mask = isHex ? rawMask : getMinimalMask(rawMask);
+                      const mask = isHex ? rawMask : getMinimalMask(rawMask, state.diagonalTiling);
                       const tileset = state.tilesets.find(ts => ts.id === tile.tilesetId);
                       const isBlobSet = (tileset as any)?.bitmaskMap?.isBlobSet;
 
                       if (isBlobSet) {
                           newTiles[idx] = { ...tile, bitmask: mask, variantIndex: BLOB_MAP[mask] ?? 0, quadrants: undefined };
                       } else if (!isHex) {
-                          nextTiles[idx] = { ...tile, bitmask: mask, quadrants: calculateTerrainQuadrants(mask), variantIndex: 0 };
+                          nextTiles[idx] = { ...tile, bitmask: mask, quadrants: calculateTerrainQuadrants(mask, state.diagonalTiling), variantIndex: 0 };
                       } else {
-                          nextTiles[idx] = { ...tile, bitmask: mask, variantIndex: tileset ? getBestTileVariant(mask, tileset.bitmaskMap) : 0 };
+                          nextTiles[idx] = { ...tile, bitmask: mask, variantIndex: tileset ? getBestTileVariant(mask, tileset.bitmaskMap, state.diagonalTiling) : 0 };
                       }
                   }
               });
@@ -532,6 +534,35 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
             })
         })),
         setGhostFloor: (id, opacity) => set((state) => ({ ghostFloorId: id, ghostFloorOpacity: opacity ?? state.ghostFloorOpacity })),
+        setDiagonalTiling: (enabled) => {
+          console.log(`[MapStore] Setting diagonal tiling: ${enabled}`);
+          set({ diagonalTiling: enabled });
+          // Trigger a full re-tiling of all tiles in the map
+          const state = get();
+          if (state.tiles.length === 0) return;
+
+          const isHex = state.grid.type.startsWith('hex-');
+          const affectedSet = new Set<string>();
+          state.tiles.forEach(t => affectedSet.add(`${t.x},${t.y}`));
+
+          const worker = new Worker(new URL('../workers/tiling.worker.ts', import.meta.url), { type: 'module' });
+          worker.onmessage = (e) => {
+            const { updatedTiles } = e.data;
+            set((state) => {
+              const updateMap = new Map((updatedTiles as TileData[]).map(ut => [`${ut.x},${ut.y},${ut.type},${ut.layerId}`, ut]));
+              const mergedTiles = state.tiles.map(t => updateMap.get(`${t.x},${t.y},${t.type},${t.layerId}`) || t);
+              return { tiles: mergedTiles, lastTileUpdate: Date.now() };
+            });
+            worker.terminate();
+          };
+          worker.postMessage({ 
+            tiles: state.tiles, 
+            affectedKeys: Array.from(affectedSet), 
+            tilesets: state.tilesets, 
+            isHex, 
+            diagonalTiling: enabled 
+          });
+        },
         updateExportMasks: (masks) => set((state) => ({
             exportMasks: {
                 lines: masks.lines ?? state.exportMasks?.lines ?? [],
@@ -539,7 +570,7 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
             }
         })),
         resetState: (newState) => set((state) => {
-            if (newState) return newState;
+            if (newState) return { ...newState, diagonalTiling: newState.diagonalTiling ?? true };
             
             const defaultGridType = useProjectStore.getState().defaultGridType || 'square';
             return {
@@ -560,7 +591,7 @@ export const useMapStore = create<ExtendedMapState & MapStoreActions>()(
             updateGlobalLighting, addPointLight, updatePointLight, 
             removePointLight, removeObjects, updateLayerFilters,
             addTile, removeTile, addTiles, removeTiles, bulkUpdateTiles, updateAutoTilingAround, addTileset, removeTileset,
-            classifyAsset, setGhostFloor, resetState,
+            classifyAsset, setGhostFloor, setDiagonalTiling, resetState,
             ...rest
           } = state;
           return rest;

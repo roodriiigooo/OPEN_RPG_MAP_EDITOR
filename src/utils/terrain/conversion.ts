@@ -4,8 +4,7 @@ import {
 } from './tiling';
 
 /**
- * Utility to programmatically convert a 5x3 tileset image into a 47-tile blob atlas.
- * This can be used for batch processing without UI interaction.
+ * Utility to programmatically convert a 5x3 tileset image into a 51-tile blob atlas (6x9).
  */
 export const convert5x3ToBlob = async (sourceFile: File): Promise<{ blob: Blob, tileSize: number }> => {
     return new Promise((resolve, reject) => {
@@ -25,17 +24,49 @@ export const convert5x3ToBlob = async (sourceFile: File): Promise<{ blob: Blob, 
             const qs = tw / 2;
 
             canvas.width = tw * 6;
-            canvas.height = th * 8;
+            canvas.height = th * 9; 
             ctx.imageSmoothingEnabled = false;
 
             const getSourceTile = (tx: number, ty: number) => ({ x: tx * tw, y: ty * th });
 
-            const getTileForQ = (mask: number, subPos: 'TL' | 'TR' | 'BL' | 'BR') => {
+            const getTileForQ = (mask: number, subPos: 'TL' | 'TR' | 'BL' | 'BR', index: number) => {
                 const getQ = (sx: number, sy: number, qPos: 'TL' | 'TR' | 'BL' | 'BR') => ({
                     sx, sy, 
                     sqx: (qPos === 'TR' || qPos === 'BR') ? qs : 0,
                     sqy: (qPos === 'BL' || qPos === 'BR') ? qs : 0,
                 });
+
+                // Custom logic for the new diagonal tiles (indices 47-50) per refined specs
+                if (index >= 47) {
+                    if (index === 47) { // Tile 48: Diag TR Refined (TL=T15/Q1, TR=T9/Q4, BL=T9/Q4, BR=T4/Q1)
+                        if (subPos === 'TL') return getQ(4, 2, 'TL'); 
+                        if (subPos === 'TR') return getQ(3, 1, 'BR'); 
+                        if (subPos === 'BL') return getQ(3, 1, 'BR'); 
+                        if (subPos === 'BR') return getQ(3, 0, 'TL'); 
+                        return getQ(1, 1, 'TL'); 
+                    }
+                    if (index === 48) { // Tile 49: Diag TL Refined (TL=T9/Q3, TR=T15/Q2, BL=T4/Q1, BR=T9/Q3)
+                        if (subPos === 'TL') return getQ(3, 1, 'BL');
+                        if (subPos === 'TR') return getQ(4, 2, 'TR');
+                        if (subPos === 'BL') return getQ(3, 0, 'TL');
+                        if (subPos === 'BR') return getQ(3, 1, 'BL');
+                        return getQ(1, 1, 'TL');
+                    }
+                    if (index === 49) { // Tile 50: Diag BR Refined (TL=T4/Q1, TR=T10/Q3, BL=T10/Q3, BR=T15/Q4)
+                        if (subPos === 'TL') return getQ(3, 0, 'TL');
+                        if (subPos === 'TR') return getQ(4, 1, 'BL');
+                        if (subPos === 'BL') return getQ(4, 1, 'BL');
+                        if (subPos === 'BR') return getQ(4, 2, 'BR');
+                        return getQ(1, 1, 'TL');
+                    }
+                    if (index === 50) { // Tile 51: Diag BL Refined (TL=T10/Q4, TR=T4/Q1, BL=T15/Q3, BR=T10/Q4)
+                        if (subPos === 'TL') return getQ(4, 1, 'BR');
+                        if (subPos === 'TR') return getQ(3, 0, 'TL');
+                        if (subPos === 'BL') return getQ(4, 2, 'BL');
+                        if (subPos === 'BR') return getQ(4, 1, 'BR');
+                        return getQ(1, 1, 'TL');
+                    }
+                }
 
                 if (mask === 0) return getQ(3, 2, subPos); 
                 
@@ -81,7 +112,7 @@ export const convert5x3ToBlob = async (sourceFile: File): Promise<{ blob: Blob, 
                 const dy = ty * th;
 
                 ['TL', 'TR', 'BL', 'BR'].forEach((qPos: any) => {
-                    const { sx, sy, sqx, sqy } = getTileForQ(mask, qPos);
+                    const { sx, sy, sqx, sqy } = getTileForQ(mask, qPos, i);
                     const src = getSourceTile(sx, sy);
                     let dx_q = qPos === 'TR' || qPos === 'BR' ? qs : 0;
                     let dy_q = qPos === 'BL' || qPos === 'BR' ? qs : 0;

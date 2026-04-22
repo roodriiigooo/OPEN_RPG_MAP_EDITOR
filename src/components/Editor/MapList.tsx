@@ -28,6 +28,7 @@ export const MapList: React.FC = () => {
         walls: currentMapState.walls,
         tiles: currentMapState.tiles,
         tilesets: currentMapState.tilesets,
+        diagonalTiling: currentMapState.diagonalTiling,
       });
     }
   };
@@ -75,6 +76,7 @@ export const MapList: React.FC = () => {
       activeLayerId: 'background-layer',
       selectedAssetIds: [],
       selectedRoomId: null,
+      diagonalTiling: false,
       grid: {
         type: defaultGridType || 'square',
         size: 100,
@@ -254,6 +256,7 @@ export const MapList: React.FC = () => {
                         if (id === activeMapId) {
                             if (updates.metadata) useMapStore.getState().updateMetadata(updates.metadata);
                             if (updates.grid) useMapStore.getState().updateGrid(updates.grid);
+                            if (updates.diagonalTiling !== undefined) useMapStore.getState().setDiagonalTiling(updates.diagonalTiling);
                         }
                     }}
                 />

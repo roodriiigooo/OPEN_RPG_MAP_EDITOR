@@ -97,11 +97,21 @@ export const TileRenderer: React.FC<{ tile: TileData; tileset: Tileset; gridSize
 
 export const TilingRenderer: React.FC<{ layerId: string; type?: TileType }> = React.memo(({ layerId, type }) => {
   const activeMapId = useMapStore(s => s.id);
+  const diagonalTiling = useMapStore(s => s.diagonalTiling);
+  const setDiagonalTiling = useMapStore(s => s.setDiagonalTiling);
   const tiles = useMapStore((state) => state.tiles);
   const tilesets = useMapStore((state) => state.tilesets);
   const gridSize = useMapStore((state) => state.grid.size);
   const lastTileUpdate = useMapStore((state) => state.lastTileUpdate);
   const groupRef = useRef<Konva.Group>(null);
+
+  // Re-run tiling algorithm for all tiles if the diagonal setting was changed externally
+  useEffect(() => {
+    // Only trigger if we actually have tiles to re-process
+    if (tiles.length > 0) {
+        setDiagonalTiling(diagonalTiling !== false);
+    }
+  }, [diagonalTiling]);
 
   const filteredTiles = useMemo(() => {
     let t = tiles.filter(tile => tile.layerId === layerId);

@@ -41,5 +41,6 @@ export const sanitizeMapState = (state: any): MapState => {
     walls: Array.isArray(state.walls) ? state.walls.map((w: any) => ({ ...w })) : [],
     tiles: Array.isArray(state.tiles) ? state.tiles.map((t: any) => ({ ...t })) : [],
     tilesets: Array.isArray(state.tilesets) ? state.tilesets.map((ts: any) => ({ ...ts })) : [],
+    diagonalTiling: state.diagonalTiling !== false
   };
 };

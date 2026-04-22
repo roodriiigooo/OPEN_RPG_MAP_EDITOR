@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { MapMetadata, GridType, MapState } from '../../types/map';
-import { Settings, Check, X, Grid, Eye, EyeOff, Magnet } from 'lucide-react';
+import { Settings, Check, X, Grid, Eye, EyeOff, Magnet, MoveUpRight } from 'lucide-react';
+import { clsx } from 'clsx';
 import { useProjectStore } from '../../store/useProjectStore';
-import { useMapStore } from '../../store/useMapStore';
 
 interface MapSettingsProps {
     map: MapState;
@@ -176,6 +176,28 @@ export const MapSettings: React.FC<MapSettingsProps> = ({ map, onUpdate, isActiv
                 className="w-6 h-4 bg-transparent border-none cursor-pointer"
             />
           </div>
+        </div>
+
+        {/* Diagonal Tiling Toggle */}
+        <div className="flex items-center justify-between p-2 rounded-lg bg-black/20 border border-theme">
+            <div className="flex items-center gap-2">
+                <MoveUpRight size={14} className={clsx(map.diagonalTiling ? "text-orange-500" : "text-muted")} />
+                <span className="text-[10px] font-bold uppercase text-muted">Diagonal Tiling</span>
+            </div>
+            <button
+                onClick={() => onUpdate(map.id, { diagonalTiling: !map.diagonalTiling })}
+                className={clsx(
+                    "relative inline-flex h-5 w-9 items-center rounded-full transition-colors outline-none",
+                    map.diagonalTiling ? "bg-orange-600" : "bg-zinc-700"
+                )}
+            >
+                <span
+                    className={clsx(
+                        "inline-block h-3 w-3 transform rounded-full bg-white transition-transform",
+                        map.diagonalTiling ? "translate-x-5" : "translate-x-1"
+                    )}
+                />
+            </button>
         </div>
       </div>
     </div>
