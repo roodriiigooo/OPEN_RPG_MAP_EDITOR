@@ -974,14 +974,19 @@ export const AssetCatalog: React.FC<AssetCatalogProps> = ({ mode = 'library' }) 
                             <FileArchive size={16} />
                             <input type="file" accept=".zip" onChange={handleFileUpload} className="hidden" disabled={isProcessingZip} />
                         </label>
-                        <label className={clsx(
+                        <button
+                           onClick={() => {
+                               useAssetStore.getState().setPendingFiles([]);
+                               useAssetStore.getState().setIsImportDialogOpen(true);
+                           }}
+                           disabled={isProcessingZip}
+                           className={clsx(
                             "p-2 rounded-xl cursor-pointer transition-all shadow-xl active:scale-95 flex items-center gap-2",
                             isProcessingZip ? "bg-orange-900 text-orange-200/50" : "bg-orange-600 hover:bg-orange-500 text-white shadow-orange-900/40"
                         )} title="Import PNG Assets">
                             <Upload size={16} />
-                            <input type="file" multiple accept=".png" onChange={handleFileUpload} className="hidden" disabled={isProcessingZip} />
-                        </label>
-                    </div>
+                            <span className="text-[10px] font-black uppercase tracking-wider hidden sm:inline">Import PNG</span>
+                        </button>                    </div>
                 </div>
             )}
           </>

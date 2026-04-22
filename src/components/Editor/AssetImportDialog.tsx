@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAssetStore } from '../../store/useAssetStore';
-import { X, Upload, Check, Image as ImageIcon, Layers, Maximize, PlusCircle, ChevronRight, Wand2, Paintbrush, Trash2, Search, Tag } from 'lucide-react';
+import { X, Upload, Check, Image as ImageIcon, Layers, Maximize, PlusCircle, ChevronRight, Wand2, Paintbrush, Trash2, Search, Tag, HelpCircle } from 'lucide-react';
 import { CustomAsset, AssetType } from '../../types/map';
 import { TilingConfigScreen } from './TilingConfigScreen';
 import { TilingConverter } from './TilingConverter';
+import { TilingGuide } from './TilingGuide';
 import { convert5x3ToBlob } from '../../utils/terrain/conversion';
 import { clsx } from 'clsx';
 
@@ -20,7 +21,7 @@ export const AssetImportDialog: React.FC = () => {
     addAsset, categories, setCategories 
   } = useAssetStore();
 
-  const [step, setStep] = useState(0); // 0: Config List, 1: Mapper, 2: Converter
+  const [step, setStep] = useState(0); // 0: Config, 1: Mapper, 2: Conv, 3: Guide
   const [previews, setPreviews] = useState<{ file: File, url: string, id: string }[]>([]);
   const [fileConfigs, setFileConfigs] = useState<Record<string, FileConfig>>({});
   
@@ -187,7 +188,35 @@ export const AssetImportDialog: React.FC = () => {
       }
   };
 
+  const handleAddFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const newFiles = Array.from(files).filter(f => f.name.endsWith('.png'));
+    if (newFiles.length === 0) return;
+
+    const newPreviews = newFiles.map(file => ({
+      file,
+      url: URL.createObjectURL(file),
+      id: Math.random().toString(36).substring(2, 9)
+    }));
+    
+    const newConfigs: Record<string, FileConfig> = {};
+    newPreviews.forEach(p => {
+        newConfigs[p.id] = {
+            name: p.file.name.replace('.png', ''),
+            type: globalType,
+            category: globalCategory
+        };
+    });
+
+    setPreviews(prev => [...prev, ...newPreviews]);
+    setFileConfigs(prev => ({ ...prev, ...newConfigs }));
+    e.target.value = '';
+  };
+
   const finalize = () => {
+    previews.forEach(p => URL.revokeObjectURL(p.url));
     setIsImporting(false);
     setPendingFiles([]);
     setIsImportDialogOpen(false);
@@ -222,7 +251,8 @@ export const AssetImportDialog: React.FC = () => {
 
       const smartFiles = previews.filter(p => fileConfigs[p.id].type !== 'stamp');
       
-      setPreviews(prev => prev.filter(p => p.id !== processingFileId));
+      const currentId = processingFileId;
+      setPreviews(prev => prev.filter(p => p.id !== currentId));
       setProcessingFileId(null);
       setStep(0);
       
@@ -233,8 +263,8 @@ export const AssetImportDialog: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-      <div className="bg-panel border-theme rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col h-[90vh]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-2 lg:p-4">
+      <div className="bg-panel border-theme rounded-3xl shadow-2xl w-full max-w-[95vw] overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col h-[95vh]">
         
         {step === 0 && (
             <>
@@ -249,7 +279,21 @@ export const AssetImportDialog: React.FC = () => {
                             <p className="text-xs text-muted font-medium uppercase tracking-tighter">Configure each file before importing</p>
                         </div>
                     </div>
-                    <button onClick={() => setIsImportDialogOpen(false)} className="text-muted hover:text-main transition-colors p-2 hover:bg-black/20 rounded-full"><X size={24} /></button>
+                    <div className="flex items-center gap-4">
+                        <button 
+                            onClick={() => setStep(3)}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl cursor-pointer transition-all shadow-lg shadow-indigo-900/40 active:scale-95 text-[10px] font-black uppercase tracking-widest"
+                        >
+                            <HelpCircle size={16} />
+                            Auto-tiling Guide
+                        </button>
+                        <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl cursor-pointer transition-all shadow-lg shadow-blue-900/40 active:scale-95 text-[10px] font-black uppercase tracking-widest">
+                            <PlusCircle size={16} />
+                            Select PNG Files
+                            <input type="file" multiple accept=".png" onChange={handleAddFiles} className="hidden" />
+                        </label>
+                        <button onClick={() => setIsImportDialogOpen(false)} className="text-muted hover:text-main transition-colors p-2 hover:bg-black/20 rounded-full"><X size={24} /></button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-hidden flex flex-col">
@@ -443,6 +487,10 @@ export const AssetImportDialog: React.FC = () => {
                 onBack={() => setStep(0)}
                 onFinish={handleSmartFinish}
             />
+        )}
+
+        {step === 3 && (
+            <TilingGuide onBack={() => setStep(0)} />
         )}
       </div>
     </div>
