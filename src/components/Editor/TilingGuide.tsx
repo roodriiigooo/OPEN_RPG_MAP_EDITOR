@@ -16,7 +16,7 @@ export const TilingGuide: React.FC<TilingGuideProps> = ({ onBack }) => {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [conversionMap, setConversionMap] = useState<any[][]>([]);
     
-    const sampleUrl = '/public/assets/sample/sample.png';
+    const sampleUrl = '/assets/sample/sample.png';
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     // Official Conversion Logic for Simulation (matching TilingConverter.tsx)
