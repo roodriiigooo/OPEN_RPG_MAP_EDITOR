@@ -12,7 +12,19 @@ export const GridOverlay: React.FC = () => {
   }
 
   const { width, height } = metadata.resolution;
-  const { size, color, opacity, type } = grid;
+  const { size, color, opacity, type, lineStyle = 'solid' } = grid;
+
+  const getDashPattern = (style: string) => {
+    switch (style) {
+      case 'dashed': return [10, 5];
+      case 'dotted': return [2, 2];
+      case 'double': return undefined; // Will handle separately or just solid for now
+      default: return undefined;
+    }
+  };
+
+  const dash = getDashPattern(lineStyle);
+  const isDouble = lineStyle === 'double';
 
   const lines = [];
 
@@ -24,11 +36,24 @@ export const GridOverlay: React.FC = () => {
           key={`v-${i}`}
           points={[i, 0, i, height]}
           stroke={color}
-          strokeWidth={1}
+          strokeWidth={isDouble ? 3 : 1}
+          dash={dash}
           opacity={opacity}
           listening={false}
         />
       );
+      if (isDouble) {
+        lines.push(
+          <Line
+            key={`v-${i}-inner`}
+            points={[i, 0, i, height]}
+            stroke={metadata.backgroundColor || '#ffffff'}
+            strokeWidth={1}
+            opacity={opacity}
+            listening={false}
+          />
+        );
+      }
     }
 
     // Horizontal lines
@@ -38,11 +63,24 @@ export const GridOverlay: React.FC = () => {
           key={`h-${j}`}
           points={[0, j, width, j]}
           stroke={color}
-          strokeWidth={1}
+          strokeWidth={isDouble ? 3 : 1}
+          dash={dash}
           opacity={opacity}
           listening={false}
         />
       );
+      if (isDouble) {
+        lines.push(
+          <Line
+            key={`h-${j}-inner`}
+            points={[0, j, width, j]}
+            stroke={metadata.backgroundColor || '#ffffff'}
+            strokeWidth={1}
+            opacity={opacity}
+            listening={false}
+          />
+        );
+      }
     }
   } else {
     // Hexagonal Grid
@@ -78,11 +116,25 @@ export const GridOverlay: React.FC = () => {
             points={points}
             closed
             stroke={color}
-            strokeWidth={1}
+            strokeWidth={isDouble ? 3 : 1}
+            dash={dash}
             opacity={opacity}
             listening={false}
           />
         );
+        if (isDouble) {
+            lines.push(
+              <Line
+                key={`hex-${q}-${r}-inner`}
+                points={points}
+                closed
+                stroke={metadata.backgroundColor || '#ffffff'}
+                strokeWidth={1}
+                opacity={opacity}
+                listening={false}
+              />
+            );
+        }
       }
     }
   }

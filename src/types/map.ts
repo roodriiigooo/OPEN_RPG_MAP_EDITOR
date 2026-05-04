@@ -19,6 +19,7 @@ export interface GridConfig {
   color: string;
   opacity: number;
   snapToGrid: boolean;
+  lineStyle?: 'solid' | 'dashed' | 'dotted' | 'double';
 }
 
 export interface GlobalLighting {
@@ -129,6 +130,8 @@ export interface MapState {
   postProcessing: PostProcessing;
   activeLayerId: string;
   diagonalTiling?: boolean;
+  diagonalTilingTerrain?: boolean;
+  diagonalTilingWalls?: boolean;
   exportMasks?: {
     lines: ExportMaskLine[];
     inverted: boolean;

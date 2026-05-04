@@ -60,7 +60,8 @@ export const LevelManager: React.FC = () => {
       tiles: [],
       tilesets: [],
       ghostFloorOpacity: 0.3,
-      diagonalTiling: false
+      diagonalTilingTerrain: true,
+      diagonalTilingWalls: true
     };
     addMap(newMap);
   };
@@ -207,7 +208,8 @@ export const LevelManager: React.FC = () => {
                         if (id === activeMapId) {
                             if (updates.metadata) useMapStore.getState().updateMetadata(updates.metadata);
                             if (updates.grid) useMapStore.getState().updateGrid(updates.grid);
-                            if (updates.diagonalTiling !== undefined) useMapStore.getState().setDiagonalTiling(updates.diagonalTiling);
+                            if (updates.diagonalTilingTerrain !== undefined) useMapStore.getState().setDiagonalTilingTerrain(updates.diagonalTilingTerrain);
+                            if (updates.diagonalTilingWalls !== undefined) useMapStore.getState().setDiagonalTilingWalls(updates.diagonalTilingWalls);
                         }
                     }}
                 />

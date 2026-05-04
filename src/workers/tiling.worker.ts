@@ -8,7 +8,7 @@ import {
 } from '../utils/terrain/tiling';
 
 self.onmessage = (e: MessageEvent) => {
-  const { tiles, affectedKeys, tilesets, isHex, layerId, diagonalTiling } = e.data;
+  const { tiles, affectedKeys, tilesets, isHex, layerId, diagonalTilingTerrain, diagonalTilingWalls } = e.data;
   const nextTiles = [...tiles] as TileData[];
   const updatedTiles: TileData[] = [];
 
@@ -26,6 +26,9 @@ self.onmessage = (e: MessageEvent) => {
           rawMask |= n.bit;
         }
       }
+
+      const isWall = tile.type === TileType.WALL;
+      const diagonalTiling = isWall ? (diagonalTilingWalls ?? true) : (diagonalTilingTerrain ?? true);
 
       const mask = isHex ? rawMask : getMinimalMask(rawMask, diagonalTiling);
       const tileset = tilesets.find((ts: any) => ts.id === tile.tilesetId);

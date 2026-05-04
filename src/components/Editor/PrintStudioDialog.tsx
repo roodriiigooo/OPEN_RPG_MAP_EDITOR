@@ -106,7 +106,10 @@ export const PrintStudioDialog: React.FC = () => {
           const sY = (dimensions.height - 150) / totalH;
           const newZoom = Math.min(sX, sY, 2);
           setPreviewZoom(newZoom);
-          setPreviewPan({ x: (dimensions.width - totalW * newZoom) / 2, y: (dimensions.height - totalH * newZoom) / 2 });
+          setPreviewPan({ 
+              x: Math.round((dimensions.width - totalW * newZoom) / 2), 
+              y: Math.round((dimensions.height - totalH * newZoom) / 2) 
+          });
       }
   }, [dimensions, paper, cols, rows]);
 
@@ -139,7 +142,7 @@ export const PrintStudioDialog: React.FC = () => {
       if (isMiddlePanning.current) {
           const dx = e.evt.clientX - lastMousePos.current.x;
           const dy = e.evt.clientY - lastMousePos.current.y;
-          setPreviewPan(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+          setPreviewPan(prev => ({ x: Math.round(prev.x + dx), y: Math.round(prev.y + dy) }));
           lastMousePos.current = { x: e.evt.clientX, y: e.evt.clientY };
       }
   }, []);
@@ -157,7 +160,10 @@ export const PrintStudioDialog: React.FC = () => {
       const mousePointTo = { x: (pointer.x - stage.x()) / oldScale, y: (pointer.y - stage.y()) / oldScale };
       const newScale = Math.max(0.1, Math.min(e.evt.deltaY < 0 ? oldScale * 1.1 : oldScale / 1.1, 10));
       setPreviewZoom(newScale);
-      setPreviewPan({ x: pointer.x - mousePointTo.x * newScale, y: pointer.y - mousePointTo.y * newScale });
+      setPreviewPan({ 
+          x: Math.round(pointer.x - mousePointTo.x * newScale), 
+          y: Math.round(pointer.y - mousePointTo.y * newScale) 
+      });
   }, []);
 
   const exportPDF = async () => {

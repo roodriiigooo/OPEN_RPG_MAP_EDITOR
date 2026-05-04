@@ -139,14 +139,28 @@ export const MapSettings: React.FC<MapSettingsProps> = ({ map, onUpdate, isActiv
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[8px] text-muted uppercase font-bold px-1">Cell Size</label>
-            <input
-                type="number"
-                value={map.grid.size}
-                onChange={(e) => onUpdate(map.id, { grid: { ...map.grid, size: parseInt(e.target.value) || 50 } })}
-                className="w-full bg-black/20 border border-theme rounded px-2 py-1 text-[10px] text-main text-center outline-none"
-            />
+            <label className="text-[8px] text-muted uppercase font-bold px-1">Line Style</label>
+            <select
+                value={map.grid.lineStyle || 'solid'}
+                onChange={(e) => onUpdate(map.id, { grid: { ...map.grid, lineStyle: e.target.value as any } })}
+                className="bg-black/20 border border-theme rounded px-1 py-1 text-[9px] text-main outline-none"
+            >
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+                <option value="dotted">Dotted</option>
+                <option value="double">Double</option>
+            </select>
           </div>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-[8px] text-muted uppercase font-bold px-1">Cell Size</label>
+          <input
+              type="number"
+              value={map.grid.size}
+              onChange={(e) => onUpdate(map.id, { grid: { ...map.grid, size: parseInt(e.target.value) || 50 } })}
+              className="w-full bg-black/20 border border-theme rounded px-2 py-1 text-[10px] text-main text-center outline-none"
+          />
         </div>
 
         <div className="space-y-2 pt-1">
@@ -178,26 +192,50 @@ export const MapSettings: React.FC<MapSettingsProps> = ({ map, onUpdate, isActiv
           </div>
         </div>
 
-        {/* Diagonal Tiling Toggle */}
-        <div className="flex items-center justify-between p-2 rounded-lg bg-black/20 border border-theme">
-            <div className="flex items-center gap-2">
-                <MoveUpRight size={14} className={clsx(map.diagonalTiling ? "text-orange-500" : "text-muted")} />
-                <span className="text-[10px] font-bold uppercase text-muted">Diagonal Tiling</span>
-            </div>
-            <button
-                onClick={() => onUpdate(map.id, { diagonalTiling: !map.diagonalTiling })}
-                className={clsx(
-                    "relative inline-flex h-5 w-9 items-center rounded-full transition-colors outline-none",
-                    map.diagonalTiling ? "bg-orange-600" : "bg-zinc-700"
-                )}
-            >
-                <span
+        <div className="space-y-2">
+            <h4 className="text-[9px] font-bold uppercase text-muted tracking-wider px-1">Diagonal Tiling</h4>
+            
+            <div className="flex items-center justify-between p-2 rounded-lg bg-black/20 border border-theme">
+                <div className="flex items-center gap-2">
+                    <MoveUpRight size={14} className={clsx(map.diagonalTilingTerrain ? "text-orange-500" : "text-muted")} />
+                    <span className="text-[10px] font-bold uppercase text-muted">Terrain</span>
+                </div>
+                <button
+                    onClick={() => onUpdate(map.id, { diagonalTilingTerrain: !map.diagonalTilingTerrain })}
                     className={clsx(
-                        "inline-block h-3 w-3 transform rounded-full bg-white transition-transform",
-                        map.diagonalTiling ? "translate-x-5" : "translate-x-1"
+                        "relative inline-flex h-5 w-9 items-center rounded-full transition-colors outline-none",
+                        map.diagonalTilingTerrain ? "bg-orange-600" : "bg-zinc-700"
                     )}
-                />
-            </button>
+                >
+                    <span
+                        className={clsx(
+                            "inline-block h-3 w-3 transform rounded-full bg-white transition-transform",
+                            map.diagonalTilingTerrain ? "translate-x-5" : "translate-x-1"
+                        )}
+                    />
+                </button>
+            </div>
+
+            <div className="flex items-center justify-between p-2 rounded-lg bg-black/20 border border-theme">
+                <div className="flex items-center gap-2">
+                    <MoveUpRight size={14} className={clsx(map.diagonalTilingWalls ? "text-orange-500" : "text-muted")} />
+                    <span className="text-[10px] font-bold uppercase text-muted">Walls</span>
+                </div>
+                <button
+                    onClick={() => onUpdate(map.id, { diagonalTilingWalls: !map.diagonalTilingWalls })}
+                    className={clsx(
+                        "relative inline-flex h-5 w-9 items-center rounded-full transition-colors outline-none",
+                        map.diagonalTilingWalls ? "bg-orange-600" : "bg-zinc-700"
+                    )}
+                >
+                    <span
+                        className={clsx(
+                            "inline-block h-3 w-3 transform rounded-full bg-white transition-transform",
+                            map.diagonalTilingWalls ? "translate-x-5" : "translate-x-1"
+                        )}
+                    />
+                </button>
+            </div>
         </div>
       </div>
     </div>

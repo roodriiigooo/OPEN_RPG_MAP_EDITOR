@@ -106,8 +106,8 @@ export const ExportDialog: React.FC = () => {
           const newZoom = Math.min(sX, sY, 0.5);
           setPreviewZoom(newZoom);
           setPreviewPosition({
-              x: (dimensions.width - metadata.resolution.width * newZoom) / 2,
-              y: (dimensions.height - metadata.resolution.height * newZoom) / 2
+              x: Math.round((dimensions.width - metadata.resolution.width * newZoom) / 2),
+              y: Math.round((dimensions.height - metadata.resolution.height * newZoom) / 2)
           });
       }
   }, [dimensions, metadata.resolution]);
@@ -149,7 +149,7 @@ export const ExportDialog: React.FC = () => {
       if (isMiddlePanning.current) {
           const dx = clientX - lastMousePos.current.x;
           const dy = clientY - lastMousePos.current.y;
-          setPreviewPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+          setPreviewPosition(prev => ({ x: Math.round(prev.x + dx), y: Math.round(prev.y + dy) }));
           lastMousePos.current = { x: clientX, y: clientY };
           return;
       }
@@ -196,19 +196,31 @@ export const ExportDialog: React.FC = () => {
       const mousePointTo = { x: (pointer.x - stage.x()) / oldScale, y: (pointer.y - stage.y()) / oldScale };
       const newScale = Math.max(0.01, Math.min(e.evt.deltaY < 0 ? oldScale * 1.1 : oldScale / 1.1, 5));
       setPreviewZoom(newScale);
-      setPreviewPosition({ x: pointer.x - mousePointTo.x * newScale, y: pointer.y - mousePointTo.y * newScale });
+      setPreviewPosition({ 
+          x: Math.round(pointer.x - mousePointTo.x * newScale), 
+          y: Math.round(pointer.y - mousePointTo.y * newScale) 
+      });
   }, []);
 
   const handleImageExport = () => {
     if (previewStageRef.current) {
       setIsExporting(true);
       setTimeout(() => {
-        exportToImage(previewStageRef.current!, {
-          mimeType, pixelRatio: pixelRatio / previewZoom,
+        const stage = previewStageRef.current!;
+        const oldPos = { x: stage.x(), y: stage.y() };
+        const oldScale = stage.scaleX();
+
+        // RESET STAGE FOR PERFECT CAPTURE
+        stage.setAttrs({ x: 0, y: 0, scaleX: 1, scaleY: 1 });
+
+        exportToImage(stage, {
+          mimeType, pixelRatio: pixelRatio,
           fileName: `${metadata.name.replace(/\s+/g, '_')}.${mimeType.split('/')[1]}`,
-          x: previewPos.x, y: previewPos.y,
-          width: metadata.resolution.width * previewZoom, height: metadata.resolution.height * previewZoom
+          x: 0, y: 0,
+          width: metadata.resolution.width, height: metadata.resolution.height
         });
+
+        stage.setAttrs({ ...oldPos, scaleX: oldScale, scaleY: oldScale });
         setIsExporting(false);
       }, 100);
     }
@@ -242,27 +254,92 @@ export const ExportDialog: React.FC = () => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d')!;
       const size = grid.size;
-      canvas.width = size;
-      canvas.height = size;
-      ctx.strokeStyle = grid.color;
-      ctx.lineWidth = 1;
-      ctx.globalAlpha = grid.opacity;
-      if (grid.type === 'square') {
-          ctx.strokeRect(0, 0, size, size);
-      } else {
+      const isHex = grid.type.startsWith('hex-');
+      
+      if (isHex) {
           const hexType = (grid.type === 'hex-pointy' ? 'pointy' : 'flat');
-          ctx.beginPath();
-          for (let i = 0; i < 6; i++) {
-              const rad = (Math.PI / 180) * (hexType === 'pointy' ? 60 * i - 30 : 60 * i);
-              const px = size/2 + (size/2) * Math.cos(rad);
-              const py = size/2 + (size/2) * Math.sin(rad);
-              if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          // For hex tiling, we need a larger pattern canvas to capture the stagger
+          // Horizontal repeat: sqrt(3) * size, Vertical: 3 * size (for pointy)
+          const pW = hexType === 'pointy' ? Math.sqrt(3) * size : 3 * size;
+          const pH = hexType === 'pointy' ? 3 * size : Math.sqrt(3) * size;
+          canvas.width = pW;
+          canvas.height = pH;
+
+          ctx.strokeStyle = grid.color;
+          ctx.lineWidth = 1;
+          ctx.globalAlpha = grid.opacity;
+
+          const drawHex = (cx: number, cy: number) => {
+              ctx.beginPath();
+              for (let i = 0; i < 6; i++) {
+                  const rad = (Math.PI / 180) * (hexType === 'pointy' ? 60 * i - 30 : 60 * i);
+                  const px = cx + size * Math.cos(rad);
+                  const py = cy + size * Math.sin(rad);
+                  if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+              }
+              ctx.closePath();
+              ctx.stroke();
+          };
+
+          // Draw enough hexes to cover the pattern area safely
+          if (hexType === 'pointy') {
+              drawHex(0, 0);
+              drawHex(pW, 0);
+              drawHex(0, 1.5 * size);
+              drawHex(pW, 1.5 * size);
+              drawHex(pW/2, 1.5 * size);
+              drawHex(pW/2, 0);
+              drawHex(pW/2, 3 * size);
+          } else {
+              drawHex(0, 0);
+              drawHex(0, pH);
+              drawHex(1.5 * size, 0);
+              drawHex(1.5 * size, pH);
+              drawHex(1.5 * size, pH/2);
+              drawHex(0, pH/2);
+              drawHex(3 * size, pH/2);
           }
-          ctx.closePath();
+      } else {
+          canvas.width = size;
+          canvas.height = size;
+          ctx.strokeStyle = grid.color;
+          ctx.lineWidth = grid.lineStyle === 'double' ? 3 : 1;
+          ctx.globalAlpha = grid.opacity;
+          
+          const setDash = (style: string) => {
+              if (style === 'dashed') ctx.setLineDash([10, 5]);
+              else if (style === 'dotted') ctx.setLineDash([2, 2]);
+              else ctx.setLineDash([]);
+          };
+
+          setDash(grid.lineStyle || 'solid');
+
+          const drawInner = () => {
+              if (grid.lineStyle === 'double') {
+                  ctx.save();
+                  ctx.setLineDash([]);
+                  ctx.strokeStyle = metadata.backgroundColor || '#ffffff';
+                  ctx.lineWidth = 1;
+                  // Draw inner lines at the same 0.5 offset
+                  ctx.beginPath();
+                  ctx.moveTo(0, 0.5); ctx.lineTo(size, 0.5);
+                  ctx.moveTo(0.5, 0); ctx.lineTo(0.5, size);
+                  ctx.stroke();
+                  ctx.restore();
+              }
+          };
+
+          // Draw ONLY Top and Left lines. When repeated, these form the full grid.
+          // We use 0.5 offset to ensure lines are 1px crisp on the pixel grid.
+          ctx.beginPath();
+          ctx.moveTo(0, 0.5); ctx.lineTo(size, 0.5);
+          ctx.moveTo(0.5, 0); ctx.lineTo(0.5, size);
           ctx.stroke();
+          
+          drawInner();
       }
       return canvas;
-  }, [grid]);
+  }, [grid, metadata.backgroundColor]);
 
   if (!isExportDialogOpen) return null;
 

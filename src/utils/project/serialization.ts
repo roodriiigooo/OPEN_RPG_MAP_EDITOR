@@ -29,6 +29,7 @@ export const sanitizeMapState = (state: any): MapState => {
         snapToGrid: true,
         color: '#666666',
         opacity: 1,
+        lineStyle: 'solid'
     },
     lighting: state.lighting ? {
       global: { ...state.lighting.global },
@@ -41,6 +42,7 @@ export const sanitizeMapState = (state: any): MapState => {
     walls: Array.isArray(state.walls) ? state.walls.map((w: any) => ({ ...w })) : [],
     tiles: Array.isArray(state.tiles) ? state.tiles.map((t: any) => ({ ...t })) : [],
     tilesets: Array.isArray(state.tilesets) ? state.tilesets.map((ts: any) => ({ ...ts })) : [],
-    diagonalTiling: state.diagonalTiling !== false
+    diagonalTilingTerrain: state.diagonalTilingTerrain !== false,
+    diagonalTilingWalls: state.diagonalTilingWalls !== false
   };
 };
